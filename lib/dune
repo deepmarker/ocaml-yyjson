@@ -1,0 +1,11 @@
+(library
+ (name yyjson)
+ (public_name yyjson)
+ (libraries ocplib-json-typed)
+ (foreign_stubs
+  (language c)
+  (names yyjson_stubs))
+ (flags -w -37)
+ (c_library_flags :standard -lyyjson))
+
+

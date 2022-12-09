@@ -1,0 +1,4 @@
+(executable
+ (public_name yyjson)
+ (name main)
+ (libraries yyjson))

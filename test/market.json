@@ -1,0 +1,32 @@
+{
+    "baseCurrency" : null,
+    "enabled" : true,
+    "future" : {
+        "description" : "1INCH Token Perpetual Futures",
+        "enabled" : true,
+        "expired" : false,
+        "expiry" : null,
+        "expiryDescription" : "Perpetual",
+        "group" : "perpetual",
+        "imfFactor" : 0.0005,
+        "imfWeight" : 1,
+        "moveStart" : null,
+        "name" : "1INCH-PERP",
+        "perpetual" : true,
+        "positionLimitWeight" : 20,
+        "postOnly" : false,
+        "type" : "perpetual",
+        "underlying" : "1INCH",
+        "underlyingDescription" : "1INCH Token"
+    },
+    "highLeverageFeeExempt" : false,
+    "largeOrderThreshold" : 350,
+    "name" : "1INCH-PERP",
+    "postOnly" : false,
+    "priceIncrement" : 0.0001,
+    "quoteCurrency" : null,
+    "restricted" : false,
+    "sizeIncrement" : 1,
+    "type" : "future",
+    "underlying" : "1INCH"
+}
