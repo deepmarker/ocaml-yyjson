@@ -12,6 +12,10 @@ bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.5"}
+  "bigstringaf"
+  "ppx_jane"
+  "alcotest" {with-test}
+  "ocplib-json-typed" {with-test}
   "odoc" {with-doc}
 ]
 build: [

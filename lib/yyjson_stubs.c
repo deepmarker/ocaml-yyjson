@@ -7,7 +7,7 @@
 #include <yyjson.h>
 
 static struct custom_operations yyjson_doc_ops = {
-  "dm.yyjson.doc.ops",
+  "yyjson.doc.ops",
   custom_finalize_default,
   custom_compare_default,
   custom_hash_default,
@@ -18,7 +18,7 @@ static struct custom_operations yyjson_doc_ops = {
 };
 
 static struct custom_operations yyjson_val_ops = {
-  "dm.yyjson.val.ops",
+  "yyjson.val.ops",
   custom_finalize_default,
   custom_compare_default,
   custom_hash_default,
@@ -29,7 +29,7 @@ static struct custom_operations yyjson_val_ops = {
 };
 
 static struct custom_operations yyjson_mut_doc_ops = {
-  "dm.yyjson.mut.doc.ops",
+  "yyjson.mut.doc.ops",
   custom_finalize_default,
   custom_compare_default,
   custom_hash_default,
@@ -40,7 +40,7 @@ static struct custom_operations yyjson_mut_doc_ops = {
 };
 
 static struct custom_operations yyjson_mut_val_ops = {
-  "dm.yyjson.mut.val.ops",
+  "yyjson.mut.val.ops",
   custom_finalize_default,
   custom_compare_default,
   custom_hash_default,
@@ -51,7 +51,7 @@ static struct custom_operations yyjson_mut_val_ops = {
 };
 
 static struct custom_operations yyjson_arr_iter_ops = {
-  "dm.yyjson.arr.iter.ops",
+  "yyjson.arr.iter.ops",
   custom_finalize_default,
   custom_compare_default,
   custom_hash_default,
@@ -62,7 +62,7 @@ static struct custom_operations yyjson_arr_iter_ops = {
 };
 
 static struct custom_operations yyjson_obj_iter_ops = {
-  "dm.yyjson.obj.iter.ops",
+  "yyjson.obj.iter.ops",
   custom_finalize_default,
   custom_compare_default,
   custom_hash_default,
@@ -73,7 +73,7 @@ static struct custom_operations yyjson_obj_iter_ops = {
 };
 
 static struct custom_operations yyjson_mut_arr_iter_ops = {
-  "dm.yyjson.mut.arr.iter.ops",
+  "yyjson.mut.arr.iter.ops",
   custom_finalize_default,
   custom_compare_default,
   custom_hash_default,
@@ -84,18 +84,13 @@ static struct custom_operations yyjson_mut_arr_iter_ops = {
 };
 
 static struct custom_operations yyjson_mut_obj_iter_ops = {
-  "dm.yyjson.mut.obj.iter.ops",
-  custom_finalize_default,
-  custom_compare_default,
-  custom_hash_default,
-  custom_serialize_default,
-  custom_deserialize_default,
-  custom_compare_ext_default,
-  custom_fixed_length_default
-};
+    "yyjson.mut.obj.iter.ops", custom_finalize_default,
+    custom_compare_default,       custom_hash_default,
+    custom_serialize_default,     custom_deserialize_default,
+    custom_compare_ext_default,   custom_fixed_length_default};
 
 static struct custom_operations yyjson_alc_ops = {
-  "dm.yyjson.alc.ops",
+  "yyjson.alc.ops",
   custom_finalize_default,
   custom_compare_default,
   custom_hash_default,
@@ -112,66 +107,92 @@ static struct custom_operations yyjson_alc_ops = {
 #define Arr_iter_val(v) ((yyjson_arr_iter *) Data_custom_val(v))
 #define Obj_iter_val(v) ((yyjson_obj_iter *) Data_custom_val(v))
 #define MutArr_iter_val(v) ((yyjson_mut_arr_iter *) Data_custom_val(v))
-#define MutObj_iter_val(v) ((yyjson_mut_obj_iter *) Data_custom_val(v))
+#define MutObj_iter_val(v) ((yyjson_mut_obj_iter *)Data_custom_val(v))
+#define Alc_val(v) ((yyjson_alc *)Data_custom_val(v))
+
+// What can I do so that Alc_val would be an l-value?
+
+
+/* The `Alc_val(v)` macro is already defined in a way that it can be used as an l-value. The definition: */
+
+/* ```c */
+/* #define Alc_val(v) ((yyjson_alc *)Data_custom_val(v)) */
+/* ``` */
+
+/* This macro casts the result of `Data_custom_val(v)` to a `yyjson_alc *` pointer. Since it's dereferencing to the actual memory location where the allocator is stored, you can assign to it directly: */
+
+/* ```c */
+/* // Example of using it as an l-value */
+/* Alc_val(v)->malloc = custom_malloc_function; */
+/* Alc_val(v)->free = custom_free_function; */
+/* Alc_val(v)->ctx = some_context; */
+/* ``` */
+
+/* This works because `Data_custom_val(v)` returns a pointer to the storage area of the custom block, which can be both read from and written to. */
+
+// Pool allocator
+
+CAMLprim value ml_yyjson_alc_pool_init(value ba) {
+  CAMLparam1(ba);
+  CAMLlocal1(alc);
+
+  alc = caml_alloc_custom(&yyjson_alc_ops, sizeof(yyjson_alc), 0, 1);
+  bool success = yyjson_alc_pool_init(Alc_val(alc),
+                                      Caml_ba_data_val(ba),
+                                      Caml_ba_array_val(ba)->dim[0]);
+    if (!success)
+        caml_failwith("yyjson_alc_pool_init");
+
+  CAMLreturn(alc);
+}
+
+CAMLprim value ml_yyjson_alc_dyn_new(value unit) {
+  CAMLparam1(unit);
+  CAMLlocal1(alc);
+
+  alc = caml_alloc_custom(&yyjson_alc_ops, sizeof(yyjson_alc), 0, 1);
+  yyjson_alc *new_alc = yyjson_alc_dyn_new();
+  memcpy(Alc_val(alc), new_alc, sizeof(yyjson_alc));
+  CAMLreturn(alc);
+}
+
+CAMLprim value ml_yyjson_alc_dyn_free(value alc) {
+  yyjson_alc_dyn_free(Alc_val(alc));
+  return Val_unit;
+}
 
 CAMLprim value ml_yyjson_version (value unit) {
     return(Val_int(yyjson_version()));
 }
 
-CAMLprim value ml_yyjson_read_opts(value buf, value pos, value len, value flg, value ba) {
-    CAMLparam5(buf, pos, len, flg, ba);
+CAMLprim value ml_yyjson_read_opts(value buf, value pos, value len, value flg, value alc) {
+    CAMLparam5(buf, pos, len, flg, alc);
     CAMLlocal1(x);
     yyjson_read_err err;
-    x = caml_alloc_custom(&yyjson_doc_ops,
-                          sizeof (yyjson_doc **),
-                          0, 1);
-    yyjson_alc alc;
-    bool ret = yyjson_alc_pool_init(&alc, Caml_ba_data_val(ba), Caml_ba_array_val(ba)->dim[0]);
-    if (!ret)
-        caml_failwith("yyjson_alc_pool_init");
-    Doc_val(x) = yyjson_read_opts(Caml_ba_data_val(buf)+Long_val(pos),
-                                  Long_val(len),
-                                  Int_val(flg),
-                                  &alc,
-                                  &err);
+    x = caml_alloc_custom(&yyjson_doc_ops, sizeof(yyjson_doc **), 0, 1);
+    yyjson_alc *calc = NULL;
+    char *data = NULL;
+    switch (Tag_val(buf)) {
+    case String_tag:
+        data = (char *)String_val(buf) + Long_val(pos);
+        break;
+    default:
+        data = ((char *)Caml_ba_data_val(buf)) + Long_val(pos);
+    }
+    if (Is_some (alc)) calc = Alc_val(Field(alc, 0));
+    Doc_val(x) = yyjson_read_opts(data, Long_val(len), Int_val(flg), calc, &err);
     if (!Doc_val(x))
         caml_failwith(err.msg);
     CAMLreturn(x);
 }
 
-CAMLprim value ml_yyjson_read_opts_string(value buf, value pos, value len, value flg, value ba) {
-    CAMLparam5(buf, pos, len, flg, ba);
+CAMLprim value ml_yyjson_read_file(value file, value flg, value alc) {
+    CAMLparam3(file, flg, alc);
     CAMLlocal1(x);
     yyjson_read_err err;
-    x = caml_alloc_custom(&yyjson_doc_ops,
-                          sizeof (yyjson_doc **),
-                          0, 1);
-    yyjson_alc alc;
-    bool ret = yyjson_alc_pool_init(&alc, Caml_ba_data_val(ba), Caml_ba_array_val(ba)->dim[0]);
-    if (!ret)
-        caml_failwith("yyjson_alc_pool_init");
-    Doc_val(x) = yyjson_read_opts((char *)String_val(buf)+Long_val(pos),
-                                  Long_val(len),
-                                  Int_val(flg),
-                                  &alc,
-                                  &err);
-    if (!Doc_val(x))
-        caml_failwith(err.msg);
-    CAMLreturn(x);
-}
-
-CAMLprim value ml_yyjson_read_file(value file, value flg, value ba) {
-    CAMLparam3(file, flg, ba);
-    CAMLlocal1(x);
-    yyjson_alc alc;
-    bool ret = yyjson_alc_pool_init(&alc, Caml_ba_data_val(ba), Caml_ba_array_val(ba)->dim[0]);
-    if (!ret)
-        caml_failwith("yyjson_alc_pool_init");
-    yyjson_read_err err;
-    yyjson_doc *doc = yyjson_read_file(String_val(file),
-                                       Int_val(flg),
-                                       &alc,
-                                       &err);
+    yyjson_alc *calc = NULL;
+    if (Is_some (alc)) calc = Alc_val(Field(alc, 0));
+    yyjson_doc *doc = yyjson_read_file(String_val(file), Int_val(flg), calc, &err);
     if (!doc)
         caml_failwith(err.msg);
 
@@ -205,18 +226,16 @@ CAMLprim value ml_yyjson_doc_free(value doc) {
 
 // Write API
 
-CAMLprim value ml_yyjson_write_opts(value doc, value flg, value ba) {
-    CAMLparam3(doc, flg, ba);
+CAMLprim value ml_yyjson_write_opts(value doc, value flg, value alc) {
+    CAMLparam3(doc, flg, alc);
     CAMLlocal1(x);
     yyjson_write_err err;
     size_t len;
-    yyjson_alc alc;
-    bool ret = yyjson_alc_pool_init(&alc, Caml_ba_data_val(ba), Caml_ba_array_val(ba)->dim[0]);
-    if (!ret)
-        caml_failwith("yyjson_alc_pool_init");
+    yyjson_alc *calc = NULL;
+    if (Is_some (alc)) calc = Alc_val(Field(alc, 0));
     char* res = yyjson_write_opts(Doc_val(doc),
                                   Int_val(flg),
-                                  &alc,
+                                  calc,
                                   &len,
                                   &err);
     if (!res)
@@ -225,18 +244,16 @@ CAMLprim value ml_yyjson_write_opts(value doc, value flg, value ba) {
     CAMLreturn(x);
 }
 
-CAMLprim value ml_yyjson_write_file(value path, value doc, value flg, value ba) {
-    CAMLparam4(path, doc, flg, ba);
+CAMLprim value ml_yyjson_write_file(value path, value doc, value flg, value alc) {
+    CAMLparam4(path, doc, flg, alc);
     CAMLlocal1(x);
     yyjson_write_err err;
-    yyjson_alc alc;
-    bool ret = yyjson_alc_pool_init(&alc, Caml_ba_data_val(ba), Caml_ba_array_val(ba)->dim[0]);
-    if (!ret)
-        caml_failwith("yyjson_alc_pool_init");
+    yyjson_alc *calc = NULL;
+    if (Is_some (alc)) calc = Alc_val(Field(alc, 0));
     bool res = yyjson_write_file(String_val(path),
                                  Doc_val(doc),
                                  Int_val(flg),
-                                 &alc,
+                                 calc,
                                  &err);
     if (!res)
         caml_failwith(err.msg);
@@ -245,18 +262,16 @@ CAMLprim value ml_yyjson_write_file(value path, value doc, value flg, value ba) 
 
 // Mutable Write API
 
-CAMLprim value ml_yyjson_mut_write_opts(value doc, value flg, value ba) {
-    CAMLparam3(doc, flg, ba);
+CAMLprim value ml_yyjson_mut_write_opts(value doc, value flg, value alc) {
+    CAMLparam3(doc, flg, alc);
     CAMLlocal1(x);
     yyjson_write_err err;
     size_t len;
-    yyjson_alc alc;
-    bool ret = yyjson_alc_pool_init(&alc, Caml_ba_data_val(ba), Caml_ba_array_val(ba)->dim[0]);
-    if (!ret)
-        caml_failwith("yyjson_alc_pool_init");
+    yyjson_alc *calc = NULL;
+    if (Is_some (alc)) calc = Alc_val(Field(alc, 0));
     char* res = yyjson_mut_write_opts(Mutdoc_val(doc),
                                       Int_val(flg),
-                                      &alc,
+                                      calc,
                                       &len,
                                       &err);
     if (!res)
@@ -265,18 +280,16 @@ CAMLprim value ml_yyjson_mut_write_opts(value doc, value flg, value ba) {
     CAMLreturn(x);
 }
 
-CAMLprim value ml_yyjson_mut_write_file(value path, value doc, value flg, value ba) {
-    CAMLparam4(path, doc, flg, ba);
+CAMLprim value ml_yyjson_mut_write_file(value path, value doc, value flg, value alc) {
+    CAMLparam4(path, doc, flg, alc);
     CAMLlocal1(x);
     yyjson_write_err err;
-    yyjson_alc alc;
-    bool ret = yyjson_alc_pool_init(&alc, Caml_ba_data_val(ba), Caml_ba_array_val(ba)->dim[0]);
-    if (!ret)
-        caml_failwith("yyjson_alc_pool_init");
+    yyjson_alc *calc = NULL;
+    if (Is_some (alc)) calc = Alc_val(Field(alc, 0));
     bool res = yyjson_mut_write_file(String_val(path),
                                      Mutdoc_val(doc),
                                      Int_val(flg),
-                                     &alc,
+                                     calc,
                                      &err);
     if (!res)
         caml_failwith(err.msg);
@@ -285,14 +298,12 @@ CAMLprim value ml_yyjson_mut_write_file(value path, value doc, value flg, value 
 
 // Mutable JSON doc API
 
-CAMLprim value ml_yyjson_mut_doc_new(value ba) {
-    CAMLparam1(ba);
+CAMLprim value ml_yyjson_mut_doc_new(value alc) {
+    CAMLparam1(alc);
     CAMLlocal1(x);
-    yyjson_alc alc;
-    bool ret = yyjson_alc_pool_init(&alc, Caml_ba_data_val(ba), Caml_ba_array_val(ba)->dim[0]);
-    if (!ret)
-        caml_failwith("yyjson_alc_pool_init");
-    yyjson_mut_doc *doc = yyjson_mut_doc_new(&alc);
+    yyjson_alc *calc = NULL;
+    if (Is_some (alc)) calc = Alc_val(Field(alc, 0));
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(calc);
     if (!doc)
         caml_failwith("yyjson_mut_doc_new");
 

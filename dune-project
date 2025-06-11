@@ -19,7 +19,14 @@
  (name yyjson)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune)
+ (depends
+   ocaml
+   dune
+   bigstringaf
+   ppx_jane
+   (alcotest :with-test)
+   (ocplib-json-typed :with-test)
+ )
  (tags
   (topics "to describe" your project)))
 

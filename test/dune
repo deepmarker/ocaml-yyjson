@@ -1,5 +1,9 @@
 (test
  (name test)
- (deps ../../../src/instrhandler/bin/ftx.json market.json)
+ (deps market.json)
  (flags (-w -32))
- (libraries yyjson alcotest product ocplib-json-typed exchange.ftx-ws))
+ (libraries
+   yyjson
+   alcotest
+   ocplib-json-typed
+))
