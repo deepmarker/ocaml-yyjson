@@ -1,14 +1,16 @@
 open Yyjson
 open Alcotest
 
+let ver = [| 0; 11; 1 |]
+
 let version () =
   let x = Lazy.force version in
-  check int "major" 0 x.major;
-  check int "minor" 11 x.minor;
-  check int "patch" 1 x.patch
+  check int "major" ver.(0) x.major;
+  check int "minor" ver.(1) x.minor;
+  check int "patch" ver.(2) x.patch
 ;;
 
-module EncodingYY = Json_encoding.Make (struct
+module YY = Json_encoding.Make (struct
     include Yyjson
 
     let repr _ = assert false
@@ -16,42 +18,70 @@ module EncodingYY = Json_encoding.Make (struct
   end)
 
 let buf = Bigstringaf.create (1 lsl 20)
+let alc = Alc.create_static buf
 
-module EncodingYYMut = Json_encoding.Make (struct
+module YYMut = Json_encoding.Make (struct
     include Yyjson.Mutable
 
-    let alc = alc_init buf
-    let repr = repr (Some alc)
     let repr_uid = Json_repr.repr_uid ()
   end)
 
-let alc = alc_init buf
-
-(* Toplevel doc will be freed *)
-let roundtrip doc enc testable () =
-  let xx = EncodingYY.destruct enc (value_of_doc doc) in
-  let v = EncodingYYMut.construct enc xx in
-  let va_json = Mutable.bigstring_of_value ~alc v in
-  (* Printf.printf "%s\n" (Bigstringaf.to_string va_json); *)
+let roundtrip doc enc =
+  (* Destruct from JSON *)
+  let xx = YY.destruct enc (doc_get_root doc) in
+  (* Create a new internal doc in the library. *)
+  let mdoc = Mutable.new_doc ~alc () in
+  (* Construct with Mut (uses memory), and set as document root. *)
+  let v = YYMut.construct enc xx in
+  Mutable.doc_set_root (Lazy.force mdoc) v;
+  (* Serialize from Mut (uses memory) *)
+  let va_json = Mutable.to_bigstring ~alc (Lazy.force mdoc) in
+  (* starting from here we don't need mdoc anymore *)
+  Mutable.free (Lazy.force mdoc);
+  (* Read serialized value *)
   let doc = of_bigstring ~alc va_json in
-  let yy = EncodingYY.destruct enc (value_of_doc doc) in
+  (* va_json not needed, need free. *)
+  Alc.free_buf alc va_json;
+  (* Destruct serialized JSON to value. *)
+  let yy = YY.destruct enc (doc_get_root doc) in
   free_doc doc;
-  check testable "" xx yy
+  xx, yy
 ;;
 
-let rdtrip str enc eq =
-  let doc = of_string ~alc str in
-  test_case str `Quick (fun () -> roundtrip doc enc eq ())
+let rdtrip ?(n = 10000) str enc eq =
+  let doc = of_string str in
+  test_case str `Quick (fun () ->
+    for _ = 0 to n - 1 do
+      let xx, yy = roundtrip doc enc in
+      check eq "" xx yy
+    done)
+;;
+
+let rdtrip_gen ?(n = 100) enc v =
+  let doc = Lazy.force (Mutable.current_doc ()) in
+  let va = YYMut.construct enc v in
+  Mutable.doc_set_root doc va;
+  let bs = Mutable.to_bigstring doc in
+  let doc = of_bigstring bs in
+  test_case "gen" `Quick (fun () ->
+    for _ = 0 to n - 1 do
+      let _, _ = roundtrip doc enc in
+      ()
+    done)
 ;;
 
 let rdtrip_name name str enc eq =
-  let doc = of_string ~alc str in
-  test_case name `Quick (fun () -> roundtrip doc enc eq ())
+  let doc = of_string str in
+  test_case name `Quick (fun () ->
+    let xx, yy = roundtrip doc enc in
+    check eq name xx yy)
 ;;
 
 let rdtrip_file name str enc eq =
-  let doc = of_file ~alc str in
-  test_case name `Quick (fun () -> roundtrip doc enc eq ())
+  let doc = of_file str in
+  test_case name `Quick (fun () ->
+    let xx, yy = roundtrip doc enc in
+    check eq name xx yy)
 ;;
 
 let int_or_string =
@@ -134,6 +164,8 @@ let product =
 
 (* let product_testable = Alcotest.testable Product.pp Product.equal *)
 
+let gen_int_arr n = Array.init n (fun _ -> 0)
+
 let basic =
   let open Json_encoding in
   [ test_case "version" `Quick version
@@ -150,6 +182,7 @@ let basic =
     (* ; rdtrip {|3|} int_or_string *)
     (* ; rdtrip {|"truc"|} int_or_string *)
   ; rdtrip {|{"a":1, "b":2, "c":3}|} (assoc int) Alcotest.(list (pair string int))
+  ; rdtrip_gen (array int) (gen_int_arr 10000)
     (* ; rdtrip *)
     (*     {|{"exchange":"CFX","symbol":"USDT-USD-REPO-LIN","product":{"instrument":{"class":"swap","kind":"repo"},"status":"active"},"tags":{"base":"USDT","quote":"USD"}}|} *)
     (*     Product.encoding *)

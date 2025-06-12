@@ -6,7 +6,7 @@ type va
 type arr_iter
 type obj_iter
 
-external create : _ alc option -> doc = "ml_yyjson_mut_doc_new"
+external create : _ Alc.alc option -> doc = "ml_yyjson_mut_doc_new"
 external free : doc -> unit = "ml_yyjson_mut_doc_free" [@@noalloc]
 external null : doc -> va = "ml_yyjson_mut_null"
 external bool : doc -> bool -> va = "ml_yyjson_mut_bool"
@@ -30,10 +30,12 @@ external obj_iter_init : va -> obj_iter = "ml_yyjson_mut_obj_iter_init"
 external obj_iter_next : obj_iter -> va = "ml_yyjson_mut_obj_iter_next"
 external obj_iter_get_val : va -> va = "ml_yyjson_mut_obj_iter_get_val"
 
+let create ?alc () = create (Option.map Alc.alc alc)
+
 external write_opts
   :  doc
   -> int
-  -> _ alc option
+  -> _ Alc.alc option
   -> Bigstringaf.t
   = "ml_yyjson_mut_write_opts"
 
@@ -41,22 +43,20 @@ external write_file
   :  string
   -> doc
   -> int
-  -> _ alc option
+  -> _ Alc.alc option
   -> unit
   = "ml_yyjson_mut_write_file"
 
-type value =
-  { doc : doc
-  ; v : va
-  }
+type value = va
 
-let free_value { doc; _ } = free doc
+let doc = ref (lazy (create ()))
 
-let find_doc = function
-  | `A ({ doc; _ } :: _) -> Some doc
-  | `O ((_, { doc; _ }) :: _) -> Some doc
-  | _ -> None
+let new_doc ?alc () =
+  doc := lazy (create ?alc ());
+  !doc
 ;;
+
+let current_doc () = !doc
 
 let repr_aux doc = function
   | `Null ->
@@ -73,7 +73,7 @@ let repr_aux doc = function
     v
   | `A xs ->
     let arr = create_arr doc in
-    List.iter xs ~f:(fun { doc = _; v } ->
+    List.iter xs ~f:(fun v ->
       let added = arr_add_val arr v in
       assert added);
     arr
@@ -81,21 +81,16 @@ let repr_aux doc = function
     let obj = create_obj doc in
     List.iter xs ~f:(fun (k, v) ->
       match v with
-      | { doc = _; v } ->
+      | v ->
         let k = string doc k in
         let added = obj_add obj k v in
         assert added);
     obj
 ;;
 
-let repr alc v =
-  let doc = Option.value ~default:(create alc) (find_doc v) in
-  let v = repr_aux doc v in
-  doc_set_root doc v;
-  { doc; v }
-;;
+let repr v = repr_aux (Lazy.force !doc) v
 
-let view { v; doc } =
+let view v =
   match get_type v with
   | ErrInvalid -> assert false
   | Raw -> assert false
@@ -116,7 +111,7 @@ let view { v; doc } =
     let rec loop a =
       match arr_iter_next it with
       | exception _ -> List.rev a
-      | v -> loop ({ v; doc } :: a)
+      | v -> loop (v :: a)
     in
     `A (loop [])
   | Obj ->
@@ -126,17 +121,15 @@ let view { v; doc } =
       | exception _ -> List.rev a
       | k ->
         let v = obj_iter_get_val k in
-        loop ((get_string k, { v; doc }) :: a)
+        loop ((get_string k, v) :: a)
     in
     `O (loop [])
 ;;
 
-let to_file ?alc ?(flags = []) path doc = write_file path doc (WriteFlag.to_int flags) alc
-
-let write_value ?alc ?(flags = []) path { doc; _ } =
-  write_file path doc (WriteFlag.to_int flags) alc
+let to_file ?alc ?(flags = []) path doc =
+  write_file path doc (WriteFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 
-let bigstring_of_value ?alc ?(flags = []) { doc; _ } =
-  write_opts doc (WriteFlag.to_int flags) alc
+let to_bigstring ?alc ?(flags = []) doc =
+  write_opts doc (WriteFlag.to_int flags) (Option.map Alc.alc alc)
 ;;

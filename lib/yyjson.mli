@@ -1,8 +1,9 @@
+module Alc : module type of Alc
 include module type of Common
 
 type doc
 type va
-type value
+type value = va
 
 val view
   :  value
@@ -21,16 +22,12 @@ type version =
   }
 
 val version : version lazy_t
+val doc_get_root : doc -> value
 val free_doc : doc -> unit
-val value_of_doc : doc -> value
-
-(** Use it at most one time only in toplevel values *)
-val free_value : value -> unit
-
-val of_file : ?alc:_ alc -> ?flags:ReadFlag.t list -> string -> doc
+val of_file : ?alc:_ Alc.t -> ?flags:ReadFlag.t list -> string -> doc
 
 val of_bigstring
-  :  ?alc:_ alc
+  :  ?alc:_ Alc.t
   -> ?flags:ReadFlag.t list
   -> ?pos:int
   -> ?len:int
@@ -38,14 +35,14 @@ val of_bigstring
   -> doc
 
 val of_string
-  :  ?alc:_ alc
+  :  ?alc:_ Alc.t
   -> ?flags:ReadFlag.t list
   -> ?pos:int
   -> ?len:int
   -> string
   -> doc
 
-val file_of_value : ?alc:_ alc -> ?flags:WriteFlag.t list -> string -> value -> unit
-val bigstring_of_value : ?alc:_ alc -> ?flags:WriteFlag.t list -> value -> Bigstringaf.t
+val to_file : ?alc:_ Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
+val to_bigstring : ?alc:_ Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
 
 module Mutable = Mutable

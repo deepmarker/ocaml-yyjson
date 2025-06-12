@@ -60,9 +60,3 @@ module WriteFlag = struct
 
   let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor Variants.to_rank x)
 end
-
-type _ alc
-
-external alc_init : Bigstringaf.t -> [ `Static ] alc = "ml_yyjson_alc_pool_init"
-external alc_dyn_new : unit -> [ `Dyn ] alc = "ml_yyjson_alc_dyn_new"
-external alc_dyn_free : [ `Dyn ] alc -> unit = "ml_yyjson_alc_dyn_free"

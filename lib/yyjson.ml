@@ -1,4 +1,5 @@
 open StdLabels
+module Alc = Alc
 include Common
 
 type doc
@@ -22,14 +23,7 @@ let version =
 
 type arr_iter
 type obj_iter
-
-type value =
-  { doc : doc
-  ; v : va
-  }
-
-let value_of_doc doc = { doc; v = doc_get_root doc }
-let free_value { doc; _ } = free_doc doc
+type value = va
 
 external get_type : va -> json_typ = "ml_yyjson_get_type" [@@noalloc]
 external get_subtype : va -> json_subtyp = "ml_yyjson_get_subtype" [@@noalloc]
@@ -44,7 +38,8 @@ external obj_iter_init : va -> obj_iter = "ml_yyjson_obj_iter_init"
 external obj_iter_next : obj_iter -> va = "ml_yyjson_obj_iter_next"
 external obj_iter_get_val : va -> va = "ml_yyjson_obj_iter_get_val"
 
-let view { v; doc } =
+(* values created here have the same lifetime as doc. Register all created values. *)
+let view v =
   match get_type v with
   | ErrInvalid -> assert false
   | Raw -> assert false
@@ -65,7 +60,7 @@ let view { v; doc } =
     let rec loop a =
       match arr_iter_next it with
       | exception _ -> List.rev a
-      | v -> loop ({ v; doc } :: a)
+      | v -> loop (v :: a)
     in
     `A (loop [])
   | Obj ->
@@ -75,19 +70,19 @@ let view { v; doc } =
       | exception _ -> List.rev a
       | k ->
         let v = obj_iter_get_val k in
-        loop ((get_string k, { v; doc }) :: a)
+        loop ((get_string k, v) :: a)
     in
     `O (loop [])
 ;;
 
-external read_file : string -> int -> _ alc option -> doc = "ml_yyjson_read_file"
+external read_file : string -> int -> _ Alc.alc option -> doc = "ml_yyjson_read_file"
 
 external read_opts
   :  Bigstringaf.t
   -> int
   -> int
   -> int
-  -> _ alc option
+  -> _ Alc.alc option
   -> doc
   = "ml_yyjson_read_opts"
 
@@ -97,42 +92,49 @@ external read_opts_string
   -> int
   -> int
   -> int
-  -> _ alc option
+  -> _ Alc.alc option
   -> doc
   = "ml_yyjson_read_opts"
 
-let of_file ?alc ?(flags = []) fn = read_file fn (ReadFlag.to_int flags) alc
+let of_file ?alc ?(flags = []) fn =
+  read_file fn (ReadFlag.to_int flags) (Option.map Alc.alc alc)
+;;
 
 let of_bigstring ?alc ?(flags = []) ?(pos = 0) ?len src =
   let buflen = Bigstringaf.length src in
   let len = Option.value len ~default:(buflen - pos) in
   if pos < 0 || len < 0 || pos + len > buflen then invalid_arg "of_bigstring";
-  read_opts src pos len (ReadFlag.to_int flags) alc
+  read_opts src pos len (ReadFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 
 let of_string ?alc ?(flags = []) ?(pos = 0) ?len src =
   let buflen = String.length src in
   let len = Option.value len ~default:(buflen - pos) in
   if pos < 0 || len < 0 || pos + len > buflen then invalid_arg "of_string";
-  read_opts_string src pos len (ReadFlag.to_int flags) alc
+  read_opts_string src pos len (ReadFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 
-external write_opts : doc -> int -> _ alc option -> Bigstringaf.t = "ml_yyjson_write_opts"
+external write_opts
+  :  doc
+  -> int
+  -> _ Alc.alc option
+  -> Bigstringaf.t
+  = "ml_yyjson_write_opts"
 
 external write_file
   :  string
   -> doc
   -> int
-  -> _ alc option
+  -> _ Alc.alc option
   -> unit
   = "ml_yyjson_write_file"
 
-let file_of_value ?alc ?(flags = []) path { doc; _ } =
-  write_file path doc (WriteFlag.to_int flags) alc
+let to_file ?alc ?(flags = []) path doc =
+  write_file path doc (WriteFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 
-let bigstring_of_value ?alc ?(flags = []) { doc; _ } =
-  write_opts doc (WriteFlag.to_int flags) alc
+let to_bigstring ?alc ?(flags = []) doc =
+  write_opts doc (WriteFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 
 module Mutable = Mutable

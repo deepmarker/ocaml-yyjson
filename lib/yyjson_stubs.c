@@ -110,26 +110,6 @@ static struct custom_operations yyjson_alc_ops = {
 #define MutObj_iter_val(v) ((yyjson_mut_obj_iter *)Data_custom_val(v))
 #define Alc_val(v) ((yyjson_alc *)Data_custom_val(v))
 
-// What can I do so that Alc_val would be an l-value?
-
-
-/* The `Alc_val(v)` macro is already defined in a way that it can be used as an l-value. The definition: */
-
-/* ```c */
-/* #define Alc_val(v) ((yyjson_alc *)Data_custom_val(v)) */
-/* ``` */
-
-/* This macro casts the result of `Data_custom_val(v)` to a `yyjson_alc *` pointer. Since it's dereferencing to the actual memory location where the allocator is stored, you can assign to it directly: */
-
-/* ```c */
-/* // Example of using it as an l-value */
-/* Alc_val(v)->malloc = custom_malloc_function; */
-/* Alc_val(v)->free = custom_free_function; */
-/* Alc_val(v)->ctx = some_context; */
-/* ``` */
-
-/* This works because `Data_custom_val(v)` returns a pointer to the storage area of the custom block, which can be both read from and written to. */
-
 // Pool allocator
 
 CAMLprim value ml_yyjson_alc_pool_init(value ba) {
@@ -158,6 +138,11 @@ CAMLprim value ml_yyjson_alc_dyn_new(value unit) {
 
 CAMLprim value ml_yyjson_alc_dyn_free(value alc) {
   yyjson_alc_dyn_free(Alc_val(alc));
+  return Val_unit;
+}
+
+CAMLprim value ml_yyjson_alc_free(value alc, value buf) {
+  Alc_val(alc)->free(Alc_val(alc)->ctx, Caml_ba_data_val(buf));
   return Val_unit;
 }
 
@@ -343,49 +328,6 @@ CAMLprim value ml_yyjson_mut_arr(value doc) {
 CAMLprim value ml_yyjson_mut_arr_add_val(value arr, value v) {
     return Val_bool(yyjson_mut_arr_add_val(Mutval_val(arr), Mutval_val(v)));
 }
-CAMLprim value ml_yyjson_mut_arr_add_null(value doc, value v) {
-    return Val_bool(yyjson_mut_arr_add_null(Mutdoc_val(doc), Mutval_val(v)));
-}
-CAMLprim value ml_yyjson_mut_arr_add_bool(value doc, value v, value b) {
-    return Val_bool(yyjson_mut_arr_add_bool(Mutdoc_val(doc), Mutval_val(v), Bool_val(b)));
-}
-CAMLprim value ml_yyjson_mut_arr_add_uint(value doc, value v, value b) {
-    return Val_bool(yyjson_mut_arr_add_uint(Mutdoc_val(doc), Mutval_val(v), Long_val(b)));
-}
-CAMLprim value ml_yyjson_mut_arr_add_sint(value doc, value v, value b) {
-    return Val_bool(yyjson_mut_arr_add_sint(Mutdoc_val(doc), Mutval_val(v), Long_val(b)));
-}
-CAMLprim value ml_yyjson_mut_arr_add_int(value doc, value v, value b) {
-    return Val_bool(yyjson_mut_arr_add_int(Mutdoc_val(doc), Mutval_val(v), Long_val(b)));
-}
-CAMLprim value ml_yyjson_mut_arr_add_real(value doc, value v, value b) {
-    return Val_bool(yyjson_mut_arr_add_real(Mutdoc_val(doc), Mutval_val(v), Double_val(b)));
-}
-CAMLprim value ml_yyjson_mut_arr_add_strcpy(value doc, value v, value b) {
-    return Val_bool(yyjson_mut_arr_add_strcpy(Mutdoc_val(doc), Mutval_val(v), String_val(b)));
-}
-CAMLprim value ml_yyjson_mut_arr_add_arr(value doc, value v) {
-    CAMLparam2(doc, v);
-    CAMLlocal1(x);
-
-    yyjson_mut_val *a = yyjson_mut_arr_add_arr(Mutdoc_val(doc), Mutval_val(v));
-
-    if (!a)
-        caml_failwith("yyjson_mut_arr_add_arr");
-    Mutval_val(x) = a;
-    CAMLreturn(x);
-}
-CAMLprim value ml_yyjson_mut_arr_add_obj(value doc, value v) {
-    CAMLparam2(doc, v);
-    CAMLlocal1(x);
-
-    yyjson_mut_val *a = yyjson_mut_arr_add_obj(Mutdoc_val(doc), Mutval_val(v));
-
-    if (!a)
-        caml_failwith("yyjson_mut_arr_add_obj");
-    Mutval_val(x) = a;
-    CAMLreturn(x);
-}
 
 // Mutable object API
 
@@ -405,31 +347,6 @@ CAMLprim value ml_yyjson_mut_obj(value doc) {
 
 CAMLprim value ml_yyjson_mut_obj_add(value obj, value k, value v) {
     return Val_bool(yyjson_mut_obj_add(Mutval_val(obj), Mutval_val(k), Mutval_val(v)));
-}
-
-CAMLprim value ml_yyjson_mut_obj_add_null(value doc, value obj, value key) {
-    return Val_bool(yyjson_mut_obj_add_null(Mutdoc_val(doc), Mutval_val(obj), Caml_ba_data_val(key)));
-}
-CAMLprim value ml_yyjson_mut_obj_add_bool(value doc, value obj, value key, value v) {
-    return Val_bool(yyjson_mut_obj_add_bool(Mutdoc_val(doc), Mutval_val(obj), Caml_ba_data_val(key), Bool_val(v)));
-}
-CAMLprim value ml_yyjson_mut_obj_add_sint(value doc, value obj, value key, value v) {
-    return Val_bool(yyjson_mut_obj_add_sint(Mutdoc_val(doc), Mutval_val(obj), Caml_ba_data_val(key), Long_val(v)));
-}
-CAMLprim value ml_yyjson_mut_obj_add_int(value doc, value obj, value key, value v) {
-    return Val_bool(yyjson_mut_obj_add_int(Mutdoc_val(doc), Mutval_val(obj), Caml_ba_data_val(key), Long_val(v)));
-}
-CAMLprim value ml_yyjson_mut_obj_add_real(value doc, value obj, value key, value v) {
-    return Val_bool(yyjson_mut_obj_add_real(Mutdoc_val(doc), Mutval_val(obj), Caml_ba_data_val(key), Double_val(v)));
-}
-CAMLprim value ml_yyjson_mut_obj_add_str(value doc, value obj, value key, value v) {
-    return Val_bool(yyjson_mut_obj_add_str(Mutdoc_val(doc), Mutval_val(obj), Caml_ba_data_val(key), String_val(v)));
-}
-CAMLprim value ml_yyjson_mut_obj_add_strcpy(value doc, value obj, value key, value v) {
-    return Val_bool(yyjson_mut_obj_add_strcpy(Mutdoc_val(doc), Mutval_val(obj), Caml_ba_data_val(key), String_val(v)));
-}
-CAMLprim value ml_yyjson_mut_obj_add_val(value doc, value obj, value key, value v) {
-    return Val_bool(yyjson_mut_obj_add_val(Mutdoc_val(doc), Mutval_val(obj), Caml_ba_data_val(key), Mutval_val(v)));
 }
 
 // Mutable value API
@@ -495,12 +412,12 @@ CAMLprim value ml_yyjson_arr_iter_has_next(value iter) {
 CAMLprim value ml_yyjson_arr_iter_next(value iter) {
     CAMLparam1(iter);
     CAMLlocal1(x);
+    yyjson_val *v = yyjson_arr_iter_next(Arr_iter_val(iter));
+    if (!v) caml_failwith("yyjson_arr_iter_next");
     x = caml_alloc_custom(&yyjson_val_ops,
                           sizeof (yyjson_val **),
                           0, 1);
-    Val_val(x) = yyjson_arr_iter_next(Arr_iter_val(iter));
-    if (!Val_val(x))
-        caml_failwith("yyjson_arr_iter_next");
+    Val_val(x) = v;
     CAMLreturn(x);
 }
 

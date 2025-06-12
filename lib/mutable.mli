@@ -5,16 +5,20 @@ type doc
 
 (* Yyjson view of some part of a doc. *)
 type va
+type value = va
 
-(* Internally, a doc and a va. *)
-type value
+val create : ?alc:_ Alc.t -> unit -> doc
+val free : doc -> unit
 
-(* Free the doc inside the value. All values depending on the same doc
-   will be invalidated. *)
-val free_value : value -> unit
-val to_file : ?alc:_ alc -> ?flags:WriteFlag.t list -> string -> doc -> unit
-val bigstring_of_value : ?alc:_ alc -> ?flags:WriteFlag.t list -> value -> Bigstringaf.t
-val write_value : ?alc:_ alc -> ?flags:WriteFlag.t list -> string -> value -> unit
+(* Create a new doc. The former doc must be closed with [free] by caller! *)
+val new_doc : ?alc:_ Alc.t -> unit -> doc lazy_t
+val current_doc : unit -> doc lazy_t
+val doc_set_root : doc -> va -> unit
+
+(* Write functions *)
+
+val to_file : ?alc:_ Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
+val to_bigstring : ?alc:_ Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
 
 val view
   :  value
@@ -27,8 +31,7 @@ val view
      ]
 
 val repr
-  :  _ alc option
-  -> [ `A of value list
+  :  [ `A of value list
      | `Bool of bool
      | `Float of float
      | `Null
