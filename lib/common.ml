@@ -24,9 +24,11 @@ module ReadFlag = struct
     | Allow_inf_and_nan
     | Number_as_raw
     | Allow_invalid_unicode
+    | Bignum_as_raw
+    | Allow_bom
   [@@deriving variants]
 
-  let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor Variants.to_rank x)
+  let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor (1 lsl Variants.to_rank x))
 end
 
 module ReadCode = struct
@@ -45,6 +47,7 @@ module ReadCode = struct
     | Literal
     | File_open
     | File_read
+    | More
 end
 
 module WriteFlag = struct
@@ -56,7 +59,9 @@ module WriteFlag = struct
     | AllowInfAndNan
     | InfAndNanAsNull
     | AllowInvalidUnicode
+    | PrettyTwoSpaces
+    | NewlineAtEnd
   [@@deriving variants]
 
-  let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor Variants.to_rank x)
+  let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor (1 lsl Variants.to_rank x))
 end
