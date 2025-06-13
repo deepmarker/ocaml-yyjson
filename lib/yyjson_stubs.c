@@ -50,45 +50,6 @@ static struct custom_operations yyjson_mut_val_ops = {
   custom_fixed_length_default
 };
 
-static struct custom_operations yyjson_arr_iter_ops = {
-  "yyjson.arr.iter.ops",
-  custom_finalize_default,
-  custom_compare_default,
-  custom_hash_default,
-  custom_serialize_default,
-  custom_deserialize_default,
-  custom_compare_ext_default,
-  custom_fixed_length_default
-};
-
-static struct custom_operations yyjson_obj_iter_ops = {
-  "yyjson.obj.iter.ops",
-  custom_finalize_default,
-  custom_compare_default,
-  custom_hash_default,
-  custom_serialize_default,
-  custom_deserialize_default,
-  custom_compare_ext_default,
-  custom_fixed_length_default
-};
-
-static struct custom_operations yyjson_mut_arr_iter_ops = {
-  "yyjson.mut.arr.iter.ops",
-  custom_finalize_default,
-  custom_compare_default,
-  custom_hash_default,
-  custom_serialize_default,
-  custom_deserialize_default,
-  custom_compare_ext_default,
-  custom_fixed_length_default
-};
-
-static struct custom_operations yyjson_mut_obj_iter_ops = {
-    "yyjson.mut.obj.iter.ops", custom_finalize_default,
-    custom_compare_default,       custom_hash_default,
-    custom_serialize_default,     custom_deserialize_default,
-    custom_compare_ext_default,   custom_fixed_length_default};
-
 static struct custom_operations yyjson_alc_ops = {
   "yyjson.alc.ops",
   custom_finalize_default,
@@ -104,10 +65,6 @@ static struct custom_operations yyjson_alc_ops = {
 #define Val_val(v) (*((yyjson_val **) Data_custom_val(v)))
 #define Mutdoc_val(v) (*((yyjson_mut_doc **) Data_custom_val(v)))
 #define Mutval_val(v) (*((yyjson_mut_val **) Data_custom_val(v)))
-#define Arr_iter_val(v) ((yyjson_arr_iter *) Data_custom_val(v))
-#define Obj_iter_val(v) ((yyjson_obj_iter *) Data_custom_val(v))
-#define MutArr_iter_val(v) ((yyjson_mut_arr_iter *) Data_custom_val(v))
-#define MutObj_iter_val(v) ((yyjson_mut_obj_iter *)Data_custom_val(v))
 #define Alc_val(v) ((yyjson_alc *)Data_custom_val(v))
 
 // Pool allocator
@@ -371,6 +328,24 @@ CAMLprim value ml_yyjson_mut_bool(value doc, value b) {
     CAMLreturn(x);
 }
 
+CAMLprim value ml_yyjson_mut_uint(value doc, value b) {
+    CAMLparam2(doc, b);
+    CAMLlocal1(x);
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val **),
+                          0, 1);
+    Mutval_val(x) = yyjson_mut_uint(Mutdoc_val(doc), Long_val(b));
+    CAMLreturn(x);
+}
+CAMLprim value ml_yyjson_mut_sint(value doc, value b) {
+    CAMLparam2(doc, b);
+    CAMLlocal1(x);
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val **),
+                          0, 1);
+    Mutval_val(x) = yyjson_mut_sint(Mutdoc_val(doc), Long_val(b));
+    CAMLreturn(x);
+}
 CAMLprim value ml_yyjson_mut_real(value doc, value b) {
     CAMLparam2(doc, b);
     CAMLlocal1(x);
@@ -393,148 +368,85 @@ CAMLprim value ml_yyjson_mut_strcpy(value doc, value b) {
 
 // Array iteration API
 
-CAMLprim value ml_yyjson_arr_iter_init(value arr) {
-    CAMLparam1(arr);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_arr_iter_ops,
-                          sizeof (yyjson_arr_iter),
-                          0, 1);
-    bool ret = yyjson_arr_iter_init(Val_val(arr), Arr_iter_val(x));
-    if (!ret)
-        caml_failwith("yyjson_arr_iter_init");
-    CAMLreturn(x);
-}
-
-CAMLprim value ml_yyjson_arr_iter_has_next(value iter) {
-    return Val_bool(yyjson_arr_iter_has_next(Arr_iter_val(iter)));
-}
-
-CAMLprim value ml_yyjson_arr_iter_next(value iter) {
-    CAMLparam1(iter);
-    CAMLlocal1(x);
-    yyjson_val *v = yyjson_arr_iter_next(Arr_iter_val(iter));
-    if (!v) caml_failwith("yyjson_arr_iter_next");
-    x = caml_alloc_custom(&yyjson_val_ops,
-                          sizeof (yyjson_val **),
-                          0, 1);
-    Val_val(x) = v;
-    CAMLreturn(x);
-}
-
-// Object iteration API
-
-CAMLprim value ml_yyjson_obj_iter_init(value obj) {
-    CAMLparam1(obj);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_obj_iter_ops,
-                          sizeof (yyjson_obj_iter),
-                          0, 1);
-    bool ret = yyjson_obj_iter_init(Val_val(obj), Obj_iter_val(x));
-    if (!ret)
-        caml_failwith("yyjson_obj_iter_init");
-    CAMLreturn(x);
-}
-
-CAMLprim value ml_yyjson_obj_iter_has_next(value iter) {
-    return Val_bool(yyjson_obj_iter_has_next(Obj_iter_val(iter)));
-}
-
-CAMLprim value ml_yyjson_obj_iter_next(value iter) {
-    CAMLparam1(iter);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_val_ops,
-                          sizeof (yyjson_val **),
-                          0, 1);
-    Val_val(x) = yyjson_obj_iter_next(Obj_iter_val(iter));
-    if (!Val_val(x))
-        caml_failwith("yyjson_obj_iter_next");
-    CAMLreturn(x);
-}
-
-CAMLprim value ml_yyjson_obj_iter_get_val(value v) {
+CAMLprim value ml_yyjson_array_iter(value v) {
     CAMLparam1(v);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_val_ops,
-                          sizeof (yyjson_val **),
-                          0, 1);
-    Val_val(x) = yyjson_obj_iter_get_val(Val_val(v));
-    if (!Val_val(x))
-        caml_failwith("yyjson_obj_iter_get_val");
-    CAMLreturn(x);
+    CAMLlocal1(mlarr);
+    yyjson_arr_iter iter = yyjson_arr_iter_with(Val_val(v));
+    size_t sz = yyjson_arr_size(Val_val(v));
+    mlarr = caml_alloc_tuple(sz);
+    CAMLlocalN(elt, sz);
+    for (int i = 0; i < sz; i++) {
+      elt[i] = caml_alloc_custom(&yyjson_val_ops, sizeof(yyjson_val **), 0, 1);
+      Val_val(elt[i]) = yyjson_arr_iter_next(&iter);
+      Store_field(mlarr, i, elt[i]);
+    }
+    CAMLreturn(mlarr);
 }
 
 // Mutable Array iteration API
 
-CAMLprim value ml_yyjson_mut_arr_iter_init(value arr) {
-    CAMLparam1(arr);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_mut_arr_iter_ops,
-                          sizeof (yyjson_mut_arr_iter),
-                          0, 1);
-    bool ret = yyjson_mut_arr_iter_init(Mutval_val(arr), MutArr_iter_val(x));
-    if (!ret)
-        caml_failwith("yyjson_mut_arr_iter_init");
-    CAMLreturn(x);
-}
-
-CAMLprim value ml_yyjson_mut_arr_iter_has_next(value iter) {
-    return Val_bool(yyjson_mut_arr_iter_has_next(MutArr_iter_val(iter)));
-}
-
-CAMLprim value ml_yyjson_mut_arr_iter_next(value iter) {
-    CAMLparam1(iter);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_mut_val_ops,
-                          sizeof (yyjson_mut_val **),
-                          0, 1);
-    Mutval_val(x) = yyjson_mut_arr_iter_next(MutArr_iter_val(iter));
-    if (!Mutval_val(x))
-        caml_failwith("yyjson_mut_arr_iter_next");
-    CAMLreturn(x);
+CAMLprim value ml_yyjson_mut_array_iter(value v) {
+    CAMLparam1(v);
+    CAMLlocal1(mlarr);
+    yyjson_mut_arr_iter iter = yyjson_mut_arr_iter_with(Mutval_val(v));
+    size_t sz = yyjson_mut_arr_size(Mutval_val(v));
+    mlarr = caml_alloc_tuple(sz);
+    CAMLlocalN(elt, sz);
+    for (int i = 0; i < sz; i++) {
+      elt[i] = caml_alloc_custom(&yyjson_val_ops, sizeof(yyjson_val **), 0, 1);
+      Mutval_val(elt[i]) = yyjson_mut_arr_iter_next(&iter);
+      Store_field(mlarr, i, elt[i]);
+    }
+    CAMLreturn(mlarr);
 }
 
 // Object iteration API
 
-CAMLprim value ml_yyjson_mut_obj_iter_init(value obj) {
-    CAMLparam1(obj);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_mut_obj_iter_ops,
-                          sizeof (yyjson_mut_obj_iter),
-                          0, 1);
-    bool ret = yyjson_mut_obj_iter_init(Mutval_val(obj), MutObj_iter_val(x));
-    if (!ret)
-        caml_failwith("yyjson_mut_obj_iter_init");
-    CAMLreturn(x);
-}
-
-CAMLprim value ml_yyjson_mut_obj_iter_has_next(value iter) {
-    return Val_bool(yyjson_mut_obj_iter_has_next(MutObj_iter_val(iter)));
-}
-
-CAMLprim value ml_yyjson_mut_obj_iter_next(value iter) {
-    CAMLparam1(iter);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_mut_val_ops,
-                          sizeof (yyjson_mut_val **),
-                          0, 1);
-    Mutval_val(x) = yyjson_mut_obj_iter_next(MutObj_iter_val(iter));
-    if (!Mutval_val(x))
-        caml_failwith("yyjson_mut_obj_iter_next");
-    CAMLreturn(x);
-}
-
-CAMLprim value ml_yyjson_mut_obj_iter_get_val(value v) {
+CAMLprim value ml_yyjson_obj_iter(value v) {
     CAMLparam1(v);
-    CAMLlocal1(x);
-    x = caml_alloc_custom(&yyjson_mut_val_ops,
-                          sizeof (yyjson_mut_val **),
-                          0, 1);
-    Mutval_val(x) = yyjson_mut_obj_iter_get_val(Mutval_val(v));
-    if (!Mutval_val(x))
-        caml_failwith("yyjson_mut_obj_iter_get_val");
-    CAMLreturn(x);
+    CAMLlocal1(mlobj);
+    yyjson_obj_iter iter = yyjson_obj_iter_with(Val_val(v));
+    size_t sz = yyjson_obj_size(Val_val(v));
+    mlobj = caml_alloc_tuple(sz);
+    CAMLlocalN(mlk, sz);
+    CAMLlocalN(mlv, sz);
+    CAMLlocalN(tup, sz);
+    for (int i = 0; i < sz; i++) {
+        yyjson_val *key = yyjson_obj_iter_next(&iter);
+        mlk[i] = caml_copy_string(yyjson_get_str(key));
+        mlv[i] = caml_alloc_custom(&yyjson_val_ops, sizeof(yyjson_val **), 0, 1);
+        Val_val(mlv[i]) = yyjson_obj_iter_get_val(key);
+        tup[i] = caml_alloc_tuple(2);
+        Store_field(tup[i], 0, mlk[i]);
+        Store_field(tup[i], 1, mlv[i]);
+        Store_field(mlobj, i, tup[i]);
+    }
+    CAMLreturn(mlobj);
 }
 
+// Mutable Object iteration API
+
+CAMLprim value ml_yyjson_mut_obj_iter(value v) {
+    CAMLparam1(v);
+    CAMLlocal1(mlobj);
+    yyjson_mut_obj_iter iter = yyjson_mut_obj_iter_with(Mutval_val(v));
+    size_t sz = yyjson_mut_obj_size(Mutval_val(v));
+    mlobj = caml_alloc_tuple(sz);
+    CAMLlocalN(mlk, sz);
+    CAMLlocalN(mlv, sz);
+    CAMLlocalN(tup, sz);
+    for (int i = 0; i < sz; i++) {
+        yyjson_mut_val *key = yyjson_mut_obj_iter_next(&iter);
+        mlk[i] = caml_copy_string(yyjson_mut_get_str(key));
+        mlv[i] = caml_alloc_custom(&yyjson_val_ops, sizeof(yyjson_val **), 0, 1);
+        Mutval_val(mlv[i]) = yyjson_mut_obj_iter_get_val(key);
+        tup[i] = caml_alloc_tuple(2);
+        Store_field(tup[i], 0, mlk[i]);
+        Store_field(tup[i], 1, mlv[i]);
+        Store_field(mlobj, i, tup[i]);
+    }
+    CAMLreturn(mlobj);
+}
 
 // Value content API (immutable)
 

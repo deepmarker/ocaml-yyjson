@@ -3,13 +3,13 @@ open Common
 
 type doc
 type va
-type arr_iter
-type obj_iter
 
 external create : _ Alc.alc option -> doc = "ml_yyjson_mut_doc_new"
 external free : doc -> unit = "ml_yyjson_mut_doc_free" [@@noalloc]
 external null : doc -> va = "ml_yyjson_mut_null"
 external bool : doc -> bool -> va = "ml_yyjson_mut_bool"
+external _uint : doc -> int -> va = "ml_yyjson_mut_uint"
+external sint : doc -> int -> va = "ml_yyjson_mut_sint"
 external float : doc -> float -> va = "ml_yyjson_mut_real"
 external string : doc -> string -> va = "ml_yyjson_mut_strcpy"
 external doc_set_root : doc -> va -> unit = "ml_yyjson_mut_doc_set_root" [@@noalloc]
@@ -24,11 +24,8 @@ external get_int : va -> int = "ml_yyjson_mut_get_int" [@@noalloc]
 external get_sint : va -> int64 = "ml_yyjson_mut_get_sint"
 external get_float : va -> float = "ml_yyjson_mut_get_real"
 external get_string : va -> string = "ml_yyjson_mut_get_str"
-external arr_iter_init : va -> arr_iter = "ml_yyjson_mut_arr_iter_init"
-external arr_iter_next : arr_iter -> va = "ml_yyjson_mut_arr_iter_next"
-external obj_iter_init : va -> obj_iter = "ml_yyjson_mut_obj_iter_init"
-external obj_iter_next : obj_iter -> va = "ml_yyjson_mut_obj_iter_next"
-external obj_iter_get_val : va -> va = "ml_yyjson_mut_obj_iter_get_val"
+external arr_iter : va -> va array = "ml_yyjson_mut_array_iter"
+external obj_iter : va -> (string * va) array = "ml_yyjson_mut_obj_iter"
 
 let create ?alc () = create (Option.map Alc.alc alc)
 
@@ -66,8 +63,9 @@ let repr_aux doc = function
     let v = bool doc b in
     v
   | `Float f ->
-    let v = float doc f in
-    v
+    (match Float.is_integer f with
+     | true -> sint doc (Float.to_int f)
+     | false -> float doc f)
   | `String s ->
     let v = string doc s in
     v
@@ -106,24 +104,8 @@ let view v =
      | _, 64 -> `Float (get_int v |> Int.to_float)
      | _ -> `Float (get_sint v |> Int64.to_float))
   | Str -> `String (get_string v)
-  | Arr ->
-    let it = arr_iter_init v in
-    let rec loop a =
-      match arr_iter_next it with
-      | exception _ -> List.rev a
-      | v -> loop (v :: a)
-    in
-    `A (loop [])
-  | Obj ->
-    let it = obj_iter_init v in
-    let rec loop a =
-      match obj_iter_next it with
-      | exception _ -> List.rev a
-      | k ->
-        let v = obj_iter_get_val k in
-        loop ((get_string k, v) :: a)
-    in
-    `O (loop [])
+  | Arr -> `A (arr_iter v |> Array.to_list)
+  | Obj -> `O (obj_iter v |> Array.to_list)
 ;;
 
 let to_file ?alc ?(flags = []) path doc =

@@ -28,22 +28,32 @@ module YYMut = Json_encoding.Make (struct
 
 let roundtrip doc enc =
   (* Destruct from JSON *)
-  let xx = YY.destruct enc (doc_get_root doc) in
+  let xx =
+    try YY.destruct enc (doc_get_root doc) with
+    | exn ->
+      Format.printf "%a@." (Json_encoding.print_error ?print_unknown:None) exn;
+      raise exn
+  in
   (* Create a new internal doc in the library. *)
-  let mdoc = Mutable.new_doc ~alc () in
+  let mdoc = Lazy.force (Mutable.new_doc ~alc ()) in
   (* Construct with Mut (uses memory), and set as document root. *)
   let v = YYMut.construct enc xx in
-  Mutable.doc_set_root (Lazy.force mdoc) v;
+  Mutable.doc_set_root mdoc v;
   (* Serialize from Mut (uses memory) *)
-  let va_json = Mutable.to_bigstring ~alc (Lazy.force mdoc) in
+  let va_json = Mutable.to_bigstring ~alc mdoc in
   (* starting from here we don't need mdoc anymore *)
-  Mutable.free (Lazy.force mdoc);
+  Mutable.free mdoc;
   (* Read serialized value *)
   let doc = of_bigstring ~alc va_json in
   (* va_json not needed, need free. *)
   Alc.free_buf alc va_json;
   (* Destruct serialized JSON to value. *)
-  let yy = YY.destruct enc (doc_get_root doc) in
+  let yy =
+    try YY.destruct enc (doc_get_root doc) with
+    | exn ->
+      Format.printf "%a" (Json_encoding.print_error ?print_unknown:None) exn;
+      raise exn
+  in
   free_doc doc;
   xx, yy
 ;;
@@ -61,8 +71,9 @@ let rdtrip_gen ?(n = 100) enc v =
   let doc = Lazy.force (Mutable.current_doc ()) in
   let va = YYMut.construct enc v in
   Mutable.doc_set_root doc va;
-  let bs = Mutable.to_bigstring doc in
+  let bs = Mutable.to_bigstring ~alc doc in
   let doc = of_bigstring bs in
+  Alc.free_buf alc bs;
   test_case "gen" `Quick (fun () ->
     for _ = 0 to n - 1 do
       let _, _ = roundtrip doc enc in
@@ -166,6 +177,10 @@ let product =
 
 let gen_int_arr n = Array.init n (fun _ -> 0)
 
+let gen_string_arr n =
+  Array.init n (fun _i -> Array.init 2 (fun _i -> String.make 10 ' '))
+;;
+
 let basic =
   let open Json_encoding in
   [ test_case "version" `Quick version
@@ -183,6 +198,7 @@ let basic =
     (* ; rdtrip {|"truc"|} int_or_string *)
   ; rdtrip {|{"a":1, "b":2, "c":3}|} (assoc int) Alcotest.(list (pair string int))
   ; rdtrip_gen (array int) (gen_int_arr 10000)
+  ; rdtrip_gen (array (array string)) (gen_string_arr 5000)
     (* ; rdtrip *)
     (*     {|{"exchange":"CFX","symbol":"USDT-USD-REPO-LIN","product":{"instrument":{"class":"swap","kind":"repo"},"status":"active"},"tags":{"base":"USDT","quote":"USD"}}|} *)
     (*     Product.encoding *)
