@@ -1,8 +1,9 @@
-type _ alc
-type _ t
+type alc
+type t
 
-val create_dyn : unit -> [ `Dyn ] t
-val create_static : Bigstringaf.t -> [ `Static ] t
-val free : [ `Dyn ] t -> unit
-val alc : 'a t -> 'a alc
-val free_buf : _ t -> Bigstringaf.t -> unit
+val create_dyn : unit -> t
+val create_static : Bigstringaf.t -> t
+val create_caml : unit -> t
+val free : t -> unit
+val alc : t -> alc
+val free_buf : t -> Bigstringaf.t -> unit

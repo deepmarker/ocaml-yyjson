@@ -7,16 +7,16 @@ type doc
 type va
 type value = va
 
-val create : ?alc:_ Alc.t -> unit -> doc
+val create : ?alc:Alc.t -> unit -> doc
 val free : doc -> unit
-val new_doc : ?alc:_ Alc.t -> unit -> doc lazy_t
+val new_doc : ?alc:Alc.t -> unit -> doc lazy_t
 val current_doc : unit -> doc lazy_t
 val doc_set_root : doc -> va -> unit
 
 (* Write functions *)
 
-val to_file : ?alc:_ Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
-val to_bigstring : ?alc:_ Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
+val to_file : ?alc:Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
+val to_bigstring : ?alc:Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
 
 val view
   :  value

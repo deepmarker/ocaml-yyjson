@@ -4,7 +4,7 @@ open Common
 type doc
 type va
 
-external create : _ Alc.alc option -> doc = "ml_yyjson_mut_doc_new"
+external create : Alc.alc option -> doc = "ml_yyjson_mut_doc_new"
 external free : doc -> unit = "ml_yyjson_mut_doc_free" [@@noalloc]
 external null : doc -> va = "ml_yyjson_mut_null"
 external bool : doc -> bool -> va = "ml_yyjson_mut_bool"
@@ -32,7 +32,7 @@ let create ?alc () = create (Option.map Alc.alc alc)
 external write_opts
   :  doc
   -> int
-  -> _ Alc.alc option
+  -> Alc.alc option
   -> Bigstringaf.t
   = "ml_yyjson_mut_write_opts"
 
@@ -40,7 +40,7 @@ external write_file
   :  string
   -> doc
   -> int
-  -> _ Alc.alc option
+  -> Alc.alc option
   -> unit
   = "ml_yyjson_mut_write_file"
 

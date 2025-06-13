@@ -17,8 +17,7 @@ module YY = Json_encoding.Make (struct
     let repr_uid = Json_repr.repr_uid ()
   end)
 
-let buf = Bigstringaf.create (1 lsl 20)
-let alc = Alc.create_static buf
+let alc = Alc.create_caml ()
 
 module YYMut = Json_encoding.Make (struct
     include Yyjson.Mutable

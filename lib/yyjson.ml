@@ -55,14 +55,14 @@ let view v =
   | Obj -> `O (obj_iter v |> Array.to_list)
 ;;
 
-external read_file : string -> int -> _ Alc.alc option -> doc = "ml_yyjson_read_file"
+external read_file : string -> int -> Alc.alc option -> doc = "ml_yyjson_read_file"
 
 external read_opts
   :  Bigstringaf.t
   -> int
   -> int
   -> int
-  -> _ Alc.alc option
+  -> Alc.alc option
   -> doc
   = "ml_yyjson_read_opts"
 
@@ -72,7 +72,7 @@ external read_opts_string
   -> int
   -> int
   -> int
-  -> _ Alc.alc option
+  -> Alc.alc option
   -> doc
   = "ml_yyjson_read_opts"
 
@@ -97,7 +97,7 @@ let of_string ?alc ?(flags = []) ?(pos = 0) ?len src =
 external write_opts
   :  doc
   -> int
-  -> _ Alc.alc option
+  -> Alc.alc option
   -> Bigstringaf.t
   = "ml_yyjson_write_opts"
 
@@ -105,7 +105,7 @@ external write_file
   :  string
   -> doc
   -> int
-  -> _ Alc.alc option
+  -> Alc.alc option
   -> unit
   = "ml_yyjson_write_file"
 

@@ -24,10 +24,10 @@ type version =
 val version : version lazy_t
 val doc_get_root : doc -> value
 val free_doc : doc -> unit
-val of_file : ?alc:_ Alc.t -> ?flags:ReadFlag.t list -> string -> doc
+val of_file : ?alc:Alc.t -> ?flags:ReadFlag.t list -> string -> doc
 
 val of_bigstring
-  :  ?alc:_ Alc.t
+  :  ?alc:Alc.t
   -> ?flags:ReadFlag.t list
   -> ?pos:int
   -> ?len:int
@@ -35,14 +35,14 @@ val of_bigstring
   -> doc
 
 val of_string
-  :  ?alc:_ Alc.t
+  :  ?alc:Alc.t
   -> ?flags:ReadFlag.t list
   -> ?pos:int
   -> ?len:int
   -> string
   -> doc
 
-val to_file : ?alc:_ Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
-val to_bigstring : ?alc:_ Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
+val to_file : ?alc:Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
+val to_bigstring : ?alc:Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
 
 module Mutable = Mutable

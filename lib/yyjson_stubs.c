@@ -69,6 +69,29 @@ static struct custom_operations yyjson_alc_ops = {
 
 // Pool allocator
 
+static void *custom_caml_stat_alloc(void *ctx, size_t sz) {
+    return caml_stat_alloc(sz);
+}
+
+static void *custom_caml_stat_resize(void *ctx, void* ptr, size_t old, size_t new) {
+    return caml_stat_resize(ptr, new);
+}
+
+static void custom_caml_stat_free(void *ctx, void* ptr) {
+    return caml_stat_free(ptr);
+}
+
+CAMLprim value ml_yyjson_alc_caml(value unit) {
+  CAMLparam1(unit);
+  CAMLlocal1(alc);
+
+  alc = caml_alloc_custom(&yyjson_alc_ops, sizeof(yyjson_alc), 0, 1);
+  Alc_val(alc)->malloc = custom_caml_stat_alloc;
+  Alc_val(alc)->realloc = custom_caml_stat_resize;
+  Alc_val(alc)->free = custom_caml_stat_free;
+  CAMLreturn(alc);
+}
+
 CAMLprim value ml_yyjson_alc_pool_init(value ba) {
   CAMLparam1(ba);
   CAMLlocal1(alc);
@@ -121,7 +144,8 @@ CAMLprim value ml_yyjson_read_opts(value buf, value pos, value len, value flg, v
     default:
         data = ((char *)Caml_ba_data_val(buf)) + Long_val(pos);
     }
-    if (Is_some (alc)) calc = Alc_val(Field(alc, 0));
+    if (Is_some(alc))
+      calc = Alc_val(Field(alc, 0));
     Doc_val(x) = yyjson_read_opts(data, Long_val(len), Int_val(flg), calc, &err);
     if (!Doc_val(x))
         caml_failwith(err.msg);
