@@ -28,8 +28,8 @@ external obj_iter : va -> (string * va) array = "ml_yyjson_obj_iter"
 external get_type : va -> json_typ = "ml_yyjson_get_type" [@@noalloc]
 external get_subtype : va -> json_subtyp = "ml_yyjson_get_subtype" [@@noalloc]
 external _get_bool : va -> bool = "ml_yyjson_get_bool" [@@noalloc]
-external get_int : va -> int = "ml_yyjson_get_int" [@@noalloc]
-external get_sint : va -> int64 = "ml_yyjson_get_sint"
+external get_int : va -> int = "ml_yyjson_get_sint_int" [@@noalloc]
+external get_int64 : va -> int64 = "ml_yyjson_get_sint"
 external get_float : va -> float = "ml_yyjson_get_real"
 external get_string : va -> string = "ml_yyjson_get_str"
 
@@ -49,7 +49,7 @@ let view v =
     (match get_subtype v, Sys.word_size with
      | Real, _ -> `Float (get_float v)
      | _, 64 -> `Float (get_int v |> Int.to_float)
-     | _ -> `Float (get_sint v |> Int64.to_float))
+     | _ -> `Float (get_int64 v |> Int64.to_float))
   | Str -> `String (get_string v)
   | Arr -> `A (arr_iter v |> Array.to_list)
   | Obj -> `O (obj_iter v |> Array.to_list)

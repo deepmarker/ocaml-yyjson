@@ -485,8 +485,8 @@ CAMLprim value ml_yyjson_get_bool(value v) {
     return Val_bool(yyjson_get_bool(Val_val(v)));
 }
 
-CAMLprim value ml_yyjson_get_int(value v) {
-    return Val_int(yyjson_get_int(Val_val(v)));
+CAMLprim value ml_yyjson_get_sint_int(value v) {
+    return Val_long(yyjson_get_sint(Val_val(v)));
 }
 
 CAMLprim value ml_yyjson_get_sint(value v) {

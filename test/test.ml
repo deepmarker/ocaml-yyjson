@@ -1,7 +1,8 @@
+open StdLabels
 open Yyjson
 open Alcotest
 
-let ver = [| 0; 11; 1 |]
+let ver = [| 0; 12; 0 |]
 
 let version () =
   let x = Lazy.force version in
@@ -174,10 +175,21 @@ let product =
 
 (* let product_testable = Alcotest.testable Product.pp Product.equal *)
 
-let gen_int_arr n = Array.init n (fun _ -> 0)
+let gen_int_arr n = Array.init n ~f:(fun _ -> 0)
 
 let gen_string_arr n =
-  Array.init n (fun _i -> Array.init 2 (fun _i -> String.make 10 ' '))
+  Array.init n ~f:(fun _i -> Array.init 2 ~f:(fun _i -> String.make 10 ' '))
+;;
+
+let equal_int64 ints =
+  test_case "test_int" `Quick (fun () ->
+    List.iter ints ~f:(fun i_str ->
+      let doc = Yyjson.of_string i_str in
+      let v = Yyjson.doc_get_root doc in
+      let open Json_encoding in
+      let i' = YY.destruct int53 v in
+      Yyjson.free_doc doc;
+      check int64 i_str (Int64.of_string i_str) i'))
 ;;
 
 let basic =
@@ -186,6 +198,9 @@ let basic =
   ; rdtrip "3" int Alcotest.int
   ; rdtrip "true" bool Alcotest.bool
   ; rdtrip "false" bool Alcotest.bool
+  ; rdtrip "8499394102736" float (Alcotest.float 8499394102736.)
+  ; rdtrip "8499394102736" int53 Alcotest.int64
+  ; equal_int64 [ "8499394102736"; "8499394110956" ]
   ; rdtrip "3.0" float (Alcotest.float 0.1)
   ; rdtrip "{}" unit Alcotest.unit
   ; rdtrip "[1,2,3]" (array int) Alcotest.(array int)
