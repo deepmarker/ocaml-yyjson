@@ -1,22 +1,23 @@
 open Common
 
-(* Hold the memory *)
+(** Underlying memory. *)
 type doc
 
-(* Yyjson view of some part of a doc. *)
+(** Iterator on doc. *)
 type va
-type value = va
 
-val create : ?alc:Alc.t -> unit -> doc
+(** [{doc; va}] required for ocplib-json-typed. *)
+type value
+
+val doc_of_value : value -> doc
+val create : unit -> doc
 val free : doc -> unit
-val new_doc : ?alc:Alc.t -> unit -> doc lazy_t
-val current_doc : unit -> doc lazy_t
 val doc_set_root : doc -> va -> unit
 
 (* Write functions *)
 
-val to_file : ?alc:Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
-val to_string : ?alc:Alc.t -> ?flags:WriteFlag.t list -> doc -> string
+val to_file : ?flags:WriteFlag.t list -> doc -> string -> unit
+val to_string : ?flags:WriteFlag.t list -> doc -> string
 
 val view
   :  value
