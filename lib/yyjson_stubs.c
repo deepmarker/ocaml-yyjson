@@ -26,16 +26,39 @@ static struct custom_operations yyjson_doc_ops = {
 };
 
 static struct custom_operations yyjson_mut_doc_ops = {
-    "yyjson.mut.doc.ops", custom_finalize_default, custom_compare_default,
-    custom_hash_default,
+    "yyjson.mut.doc.ops",       custom_finalize_default,
+    custom_compare_default,     custom_hash_default,
     custom_serialize_default,   custom_deserialize_default,
     custom_compare_ext_default, custom_fixed_length_default};
+
+static struct custom_operations yyjson_val_ops = {
+  "yyjson.val.ops",
+  custom_finalize_default,
+  custom_compare_default,
+  custom_hash_default,
+  custom_serialize_default,
+  custom_deserialize_default,
+  custom_compare_ext_default,
+  custom_fixed_length_default
+};
+
+static struct custom_operations yyjson_mut_val_ops = {
+  "yyjson.mut.val.ops",
+  custom_finalize_default,
+  custom_compare_default,
+  custom_hash_default,
+  custom_serialize_default,
+  custom_deserialize_default,
+  custom_compare_ext_default,
+  custom_fixed_length_default
+};
+
 
 #define Doc_val(v) (*((yyjson_doc **) Data_custom_val(v)))
 #define Mutdoc_val(v) (*((yyjson_mut_doc **) Data_custom_val(v)))
 
-#define Val_val(v) ((yyjson_val *) Data_abstract_val(v))
-#define Mutval_val(v) ((yyjson_mut_val *)Data_abstract_val(v))
+#define Val_val(v) (*(yyjson_val **) Data_custom_val(v))
+#define Mutval_val(v) (*(yyjson_mut_val **)Data_custom_val(v))
 
 CAMLprim value ml_yyjson_version (value unit) {
     return(Val_int(yyjson_version()));
@@ -75,9 +98,11 @@ CAMLprim value ml_yyjson_read_file(value file, value flg) {
 CAMLprim value ml_yyjson_doc_get_root(value doc) {
     CAMLparam1(doc);
     CAMLlocal1(x);
-    x = caml_alloc(2, Abstract_tag);
+    x = caml_alloc_custom(&yyjson_val_ops,
+                          sizeof (yyjson_val *),
+                          0, 1);
     yyjson_val *v = yyjson_doc_get_root(Doc_val(doc));
-    memcpy(Val_val(x), v, sizeof(yyjson_val));
+    Val_val(x) = v;
     CAMLreturn(x);
 }
 
@@ -189,8 +214,8 @@ CAMLprim value ml_yyjson_mut_arr(value doc) {
     CAMLlocal1(x);
     yyjson_mut_val *v = yyjson_mut_arr(Mutdoc_val(doc));
     if (!v) caml_failwith("yyjson_mut_arr");
-    x = caml_alloc(3, Abstract_tag);
-    memcpy(Mutval_val(x), v, sizeof(yyjson_mut_val));
+    x = caml_alloc_custom(&yyjson_mut_val_ops, sizeof(yyjson_mut_val *), 0, 1);
+    Mutval_val(x) = v;
     CAMLreturn(x);
 }
 
@@ -211,8 +236,10 @@ CAMLprim value ml_yyjson_mut_obj(value doc) {
     CAMLlocal1(x);
     yyjson_mut_val *v = yyjson_mut_obj(Mutdoc_val(doc));
     if (!v) caml_failwith("yyjson_mut_obj");
-    x = caml_alloc(3, Abstract_tag);
-    memcpy(Mutval_val(x), v, sizeof(yyjson_mut_val));
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val *),
+                          0, 1);
+    Mutval_val(x) = v;
     CAMLreturn(x);
 }
 
@@ -230,52 +257,64 @@ CAMLprim value ml_yyjson_mut_obj_add(value doc, value obj, value k, value v) {
 CAMLprim value ml_yyjson_mut_null(value doc) {
     CAMLparam1(doc);
     CAMLlocal1(x);
-    x = caml_alloc(3, Abstract_tag);
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val *),
+                          0, 1);
     yyjson_mut_val *v = yyjson_mut_null(Mutdoc_val(doc));
-    memcpy(Mutval_val(x), v, sizeof(yyjson_mut_val));
+    Mutval_val(x) = v;
     CAMLreturn(x);
 }
 
 CAMLprim value ml_yyjson_mut_bool(value doc, value b) {
     CAMLparam2(doc, b);
     CAMLlocal1(x);
-    x = caml_alloc(3, Abstract_tag);
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val *),
+                          0, 1);
     yyjson_mut_val *v = yyjson_mut_bool(Mutdoc_val(doc), Bool_val(b));
-    memcpy(Mutval_val(x), v, sizeof(yyjson_mut_val));
+    Mutval_val(x) = v;
     CAMLreturn(x);
 }
 
 CAMLprim value ml_yyjson_mut_uint(value doc, value b) {
     CAMLparam2(doc, b);
     CAMLlocal1(x);
-    x = caml_alloc(3, Abstract_tag);
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val *),
+                          0, 1);
     yyjson_mut_val *v = yyjson_mut_uint(Mutdoc_val(doc), Long_val(b));
-    memcpy(Mutval_val(x), v, sizeof(yyjson_mut_val));
+    Mutval_val(x) = v;
     CAMLreturn(x);
 }
 CAMLprim value ml_yyjson_mut_sint(value doc, value b) {
     CAMLparam2(doc, b);
     CAMLlocal1(x);
-    x = caml_alloc(3, Abstract_tag);
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val *),
+                          0, 1);
     yyjson_mut_val *v = yyjson_mut_sint(Mutdoc_val(doc), Long_val(b));
-    memcpy(Mutval_val(x), v, sizeof(yyjson_mut_val));
+    Mutval_val(x) = v;
     CAMLreturn(x);
 }
 CAMLprim value ml_yyjson_mut_real(value doc, value b) {
     CAMLparam2(doc, b);
     CAMLlocal1(x);
-    x = caml_alloc(3, Abstract_tag);
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val *),
+                          0, 1);
     yyjson_mut_val *v = yyjson_mut_real(Mutdoc_val(doc), Double_val(b));
-    memcpy(Mutval_val(x), v, sizeof(yyjson_mut_val));
+    Mutval_val(x) = v;
     CAMLreturn(x);
 }
 
 CAMLprim value ml_yyjson_mut_strcpy(value doc, value b) {
     CAMLparam2(doc, b);
     CAMLlocal1(x);
-    x = caml_alloc(3, Abstract_tag);
+    x = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val *),
+                          0, 1);
     yyjson_mut_val *v = yyjson_mut_strcpy(Mutdoc_val(doc), String_val(b));
-    memcpy(Mutval_val(x), v, sizeof(yyjson_mut_val));
+    Mutval_val(x) = v;
     CAMLreturn(x);
 }
 
@@ -291,12 +330,14 @@ CAMLprim value ml_yyjson_array_iter(value doc, value v) {
     mlarr = caml_alloc_tuple(iter.max);
 
     for (size_t i = 0; i < iter.max; i++) {
-        elt = caml_alloc(2, Abstract_tag);
+        elt = caml_alloc_custom(&yyjson_val_ops,
+                          sizeof (yyjson_val *),
+                          0, 1);
         if (Doc_val(doc) == NULL) {
             caml_failwith("doc is NULL");
         }
         yyjson_val *v = yyjson_arr_iter_next(&iter);
-        memcpy(Val_val(elt), v, sizeof(yyjson_val));
+        Val_val(elt) = v;
         Store_field(mlarr, i, elt);
     }
 
@@ -315,12 +356,14 @@ CAMLprim value ml_yyjson_mut_array_iter(value doc, value v) {
     mlarr = caml_alloc_tuple(iter.max);
 
     for (size_t i = 0; i < iter.max; i++) {
-        elt = caml_alloc(3, Abstract_tag);
+        elt = caml_alloc_custom(&yyjson_mut_val_ops,
+                          sizeof (yyjson_mut_val *),
+                          0, 1);
         if (Mutdoc_val(doc) == NULL) {
             caml_failwith("mutdoc is NULL");
         }
         yyjson_mut_val *v = yyjson_mut_arr_iter_next(&iter);
-        memcpy(Mutval_val(elt), v, sizeof(yyjson_mut_val));
+        Mutval_val(elt) = v;
         Store_field(mlarr, i, elt);
     }
 
@@ -344,9 +387,11 @@ CAMLprim value ml_yyjson_obj_iter(value doc, value v) {
         yyjson_val *key = yyjson_obj_iter_next(&iter);
         const char *keystr = yyjson_get_str(key);
         mlk = caml_copy_string(keystr);
-        mlv = caml_alloc(2, Abstract_tag);
+        mlv = caml_alloc_custom(&yyjson_val_ops,
+                          sizeof (yyjson_val *),
+                          0, 1);
         yyjson_val *v = yyjson_obj_iter_get_val(key);
-        memcpy(Val_val(mlv), v, sizeof(yyjson_val));
+        Val_val(mlv) = v;
         tup = caml_alloc_tuple(2);
         Store_field(tup, 0, mlk);
         Store_field(tup, 1, mlv);
@@ -370,9 +415,11 @@ CAMLprim value ml_yyjson_mut_obj_iter(value doc, value v) {
         yyjson_mut_val *key = yyjson_mut_obj_iter_next(&iter);
         const char *keystr = yyjson_mut_get_str(key);
         mlk = caml_copy_string(keystr);
-        mlv = caml_alloc(3, Abstract_tag);
+        mlv = caml_alloc_custom(&yyjson_mut_val_ops,
+                                sizeof (yyjson_mut_val *),
+                                0, 1);
         yyjson_mut_val *v = yyjson_mut_obj_iter_get_val(key);
-        memcpy(Mutval_val(mlv), v, sizeof(yyjson_mut_val));
+        Mutval_val(mlv) = v;
         tup = caml_alloc_tuple(2);
         Store_field(tup, 0, mlk);
         Store_field(tup, 1, mlv);
@@ -506,75 +553,3 @@ CAMLprim value ml_yyjson_mut_get_str(value doc, value v) {
     x = caml_copy_string(yyjson_mut_get_str(Mutval_val(v)));
     CAMLreturn(x);
 }
-
-
-/* Is the use of Val_val above correct (memcpy VS get_type) i.e. is it symmetric for get and set vals? */
-
-
-/* Looking at your code, there's an **asymmetry issue** with `Val_val`: */
-
-/* ## The Problem */
-
-/* 1. **When creating vals** (e.g., `ml_yyjson_doc_get_root`): */
-/* ```c */
-/* x = caml_alloc(2, Abstract_tag);  // Allocates 2 words */
-/* yyjson_val *v = yyjson_doc_get_root(Doc_val(doc)); */
-/* memcpy(Val_val(x), v, sizeof(yyjson_val));  // Copies yyjson_val struct */
-/* ``` */
-
-/* 2. **When reading vals** (e.g., `ml_yyjson_get_type`): */
-/* ```c */
-/* yyjson_get_type(Val_val(v))  // Passes pointer to the data */
-/* ``` */
-
-/* This is **correct** - `Val_val(v)` gives you a `yyjson_val*`
-   pointing to the copied struct data. */
-
-/* ## However, there are issues: */
-
-/* ### 1. **Size mismatch for mutable vals** */
-/* ```c */
-/* // Immutable: allocates 2 words */
-/* x = caml_alloc(2, Abstract_tag); */
-
-/* // Mutable: allocates 3 words */
-/* x = caml_alloc(3, Abstract_tag); */
-/* ``` */
-
-/* Why the difference? If `sizeof(yyjson_mut_val) ==
-   sizeof(yyjson_val)`, they should use the same size. Check with: */
-
-/* ```c */
-/* // Should both be: ((sizeof(yyjson_val) + sizeof(value) - 1) / sizeof(value)) */
-/* ``` */
-
-/* ### 2. **Potential memory corruption** */
-
-/* If `sizeof(yyjson_val) > 2 * sizeof(value)`, you'll overflow the
-   allocated block. You should use: */
-
-/* ```c */
-/* x = caml_alloc((sizeof(yyjson_val) + sizeof(value) - 1) / sizeof(value), Abstract_tag); */
-/* ``` */
-
-/* ### 3. **No validation that memcpy succeeded** */
-/* The copy assumes the allocation is large enough. */
-
-/* ## Recommendation */
-
-/* ```c */
-/* #define YYJSON_VAL_WOSIZE ((sizeof(yyjson_val) + sizeof(value) - 1) / sizeof(value)) */
-/* #define YYJSON_MUT_VAL_WOSIZE ((sizeof(yyjson_mut_val) + sizeof(value) - 1) / sizeof(value)) */
-
-/* CAMLprim value ml_yyjson_doc_get_root(value doc) { */
-/*     CAMLparam1(doc); */
-/*     CAMLlocal1(x); */
-/*     x = caml_alloc(YYJSON_VAL_WOSIZE, Abstract_tag); */
-/*     yyjson_val *v = yyjson_doc_get_root(Doc_val(doc)); */
-/*     memcpy(Data_abstract_val(x), v, sizeof(yyjson_val)); */
-/*     CAMLreturn(x); */
-/* } */
-/* ``` */
-
-/* The usage is **symmetric** (get/set both use `Val_val`), but you
-   need to ensure the allocation size is correct. */

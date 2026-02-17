@@ -287,7 +287,7 @@ let equal_int64 ints =
 let basic =
   let open Json_encoding in
   [ test_case "version" `Quick version
-  ; rdtrip "3" int Alcotest.int
+  ; rdtrip ~n:1 "3" int Alcotest.int
   ; rdtrip "true" bool Alcotest.bool
   ; rdtrip "false" bool Alcotest.bool
   ; rdtrip "8499394102736" float (Alcotest.float 8499394102736.)
@@ -298,18 +298,18 @@ let basic =
   ; rdtrip "[]" (array int) Alcotest.(array int)
     (* ; rdtrip {|{"a": 1}|} (obj1 (req "a" int)) Alcotest.int *)
   ; rdtrip "[1]" (array int) Alcotest.(array int)
-    (* ; rdtrip ~n:1 "[1,2,3]" (array int) Alcotest.(array int) *)
-    (* ; rdtrip *)
-    (*     {|{"a": 1, "b": "truc"}|} *)
-    (*     (obj2 (req "a" int) (req "b" string)) *)
-    (*     Alcotest.(pair int string) *)
-    (*   (\* ; rdtrip {|3|} int_or_string *\) *)
-    (*   (\* ; rdtrip {|"truc"|} int_or_string *\) *)
-    (* ; rdtrip {|{"a":1, "b":2, "c":3}|} (assoc int) Alcotest.(list (pair string int)) *)
-    (* ; rdtrip ~n:1 Snap.payload Snap.enc (module Snap) *)
-    (* ; rdtrip ~n:1 Snap.payload2 Snap.enc (module Snap) *)
-    (* ; rdtrip ~n:1 Snap.payload3 Snap.enc (module Snap) *)
-    (* ; Snap.twostep 10000 *)
+  ; rdtrip ~n:1 "[1,2,3]" (array int) Alcotest.(array int)
+  ; rdtrip
+      {|{"a": 1, "b": "truc"}|}
+      (obj2 (req "a" int) (req "b" string))
+      Alcotest.(pair int string)
+    (* ; rdtrip {|3|} int_or_string *)
+    (* ; rdtrip {|"truc"|} int_or_string *)
+  ; rdtrip {|{"a":1, "b":2, "c":3}|} (assoc int) Alcotest.(list (pair string int))
+  ; rdtrip ~n:1 Snap.payload Snap.enc (module Snap)
+  ; rdtrip ~n:1 Snap.payload2 Snap.enc (module Snap)
+  ; rdtrip ~n:1 Snap.payload3 Snap.enc (module Snap)
+  ; Snap.twostep 10000
     (* ; rdtrip_gen ~n:1000 Snap.enc Snap.payload_v *)
     (* ; rdtrip_gen (array int) (gen_int_arr 10000) *)
     (* ; rdtrip_gen (array (array string)) (gen_string_arr 5000) *)
