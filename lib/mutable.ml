@@ -29,12 +29,7 @@ external obj_iter : va -> (string * va) array = "ml_yyjson_mut_obj_iter"
 
 let create ?alc () = create (Option.map Alc.alc alc)
 
-external write_opts
-  :  doc
-  -> int
-  -> Alc.alc option
-  -> Bigstringaf.t
-  = "ml_yyjson_mut_write_opts"
+external write_opts : doc -> int -> Alc.alc option -> string = "ml_yyjson_mut_write_opts"
 
 external write_file
   :  string
@@ -112,6 +107,122 @@ let to_file ?alc ?(flags = []) path doc =
   write_file path doc (WriteFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 
-let to_bigstring ?alc ?(flags = []) doc =
+let to_string ?alc ?(flags = []) doc =
   write_opts doc (WriteFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
+
+(* Do you understand why I coded this doc / new_doc / current_doc
+   thing here? In the context of this yyjson mutable binding. I did
+   not remember and it seems useless/fishy. *)
+
+(* Looking at this code, I can see what's happening but I'm not
+   entirely sure of the intended use case. *)
+
+(* The `doc / new_doc / current_doc` pattern creates a **global
+   mutable reference** to a lazy document. Here's what it does: *)
+
+(* 1. `doc` holds a lazy document that's only created when forced *)
+(* 2. `new_doc()` creates a new lazy document and stores it in the global `doc` ref *)
+(* 3. `current_doc()` returns the current lazy document *)
+
+(* **Why this might have been coded:** *)
+
+(* In the yyjson mutable API, every value (`va`) must be created with
+   a `doc` parameter - it ties the lifetime of values to their
+   document. This pattern could be an attempt to provide a "default"
+   document for convenience, so users don't have to thread a `doc`
+   through all their code. *)
+
+(* **Why it seems fishy/useless:** *)
+
+(* 1. **Unsafe with concurrency** - global mutable state *)
+
+(* 2. **The lazy wrapper seems pointless** - you're wrapping a `doc`
+   in `lazy` but immediately forcing it in most use cases *)
+
+(* 3. **Memory management unclear** - when does the old doc get freed?
+   The `free` function exists but there's no cleanup when calling
+   `new_doc()` *)
+
+(* 4. **Not actually used** - none of your exported functions
+   reference `current_doc()`, so users still need to pass `doc`
+   explicitly anyway *)
+
+(* **My guess:** This was either an incomplete experiment with an
+   implicit context pattern, or leftover from refactoring. You
+   probably realized users need explicit control over document
+   lifetime and abandoned this approach, but forgot to remove it. *)
+
+(* Probably because the same doc can be doc_set_root multiple times so
+   it is useless to create one new each time? Is it the case? *)
+
+(* **Yes, exactly!** That's the key insight I missed. *)
+
+(* Looking at the yyjson mutable API: *)
+
+(* - A `doc` is like a memory arena/allocator for JSON values *)
+
+(* - You can call `doc_set_root` multiple times on the same `doc` to
+   build different JSON trees *)
+
+(* - Each `va` value created with `create_obj`, `create_arr`,
+   `string`, etc. is allocated from the `doc` *)
+
+(* So the pattern makes sense as: *)
+(* 1. **Reuse the same document allocator** across multiple JSON constructions *)
+(* 2. **Avoid overhead** of creating/destroying docs repeatedly *)
+(* 3. The lazy wrapper ensures it's only created once when first needed *)
+
+(* **However**, it's still problematic because: *)
+(* - Without calling `free`, you'll leak memory from previous trees when you `doc_set_root` again (unless yyjson reuses that memory internally) *)
+(* - The global mutable state means you can't safely build multiple independent JSON trees concurrently *)
+(* - Users still need explicit `doc` parameters in all the constructor functions *)
+
+(* So while the "reuse doc" intuition is correct, this particular
+   implementation with a global lazy ref doesn't fully solve the
+   problem. You'd probably want either: *)
+
+(* - Explicit document management (create, use, free), or *)
+(* - A better pooling/arena mechanism *)
+
+(* Ok, giving more context, I think I was not able to change the
+   signatures of view and repr so I had to hide the doc somewhere? *)
+
+(* **Ah! That makes perfect sense now!** *)
+
+(* Looking at the signatures: *)
+
+(* ```ocaml *)
+(* val repr : [< `Null | `Bool of bool | `Float of float | `String of string  *)
+(*            | `A of va list | `O of (string * va) list ] -> va *)
+
+(* val view : va -> [> `Null | `Bool of bool | `Float of float | `String of string *)
+(*            | `A of va list | `O of (string * va) list ] *)
+(* ``` *)
+
+(* These functions need a `doc` to work (especially `repr` which
+   creates values), but they don't take one as a parameter. So you
+   needed to: *)
+
+(* 1. **Hide the `doc` dependency** to match an existing interface
+   (probably defined in a signature file or to match some
+   abstraction) *)
+
+(* 2. **Store it globally** so `repr` can access it without changing
+   the function signature *)
+
+(* This explains: *)
+(* - Why it's lazy (create on first use) *)
+(* - Why `new_doc()` exists (let users replace the arena if needed) *)
+
+(* - Why it seems "fishy" (because global mutable state *is* fishy,
+   but you were constrained) *)
+
+(* **This is actually a reasonable workaround** when you're
+   implementing an interface that doesn't thread through the necessary
+   context. The alternative would be to use an explicit module functor
+   or require users to call something like `with_doc doc (fun () ->
+   repr ...)`, which might be more complex. *)
+
+(* The only risk is if someone forgets that multiple `repr` calls
+   share the same underlying document arena. *)

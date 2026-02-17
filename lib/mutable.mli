@@ -16,7 +16,7 @@ val doc_set_root : doc -> va -> unit
 (* Write functions *)
 
 val to_file : ?alc:Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
-val to_bigstring : ?alc:Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
+val to_string : ?alc:Alc.t -> ?flags:WriteFlag.t list -> doc -> string
 
 val view
   :  value

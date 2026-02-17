@@ -94,12 +94,7 @@ let of_string ?alc ?(flags = []) ?(pos = 0) ?len src =
   read_opts_string src pos len (ReadFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 
-external write_opts
-  :  doc
-  -> int
-  -> Alc.alc option
-  -> Bigstringaf.t
-  = "ml_yyjson_write_opts"
+external write_opts : doc -> int -> Alc.alc option -> string = "ml_yyjson_write_opts"
 
 external write_file
   :  string
@@ -113,7 +108,7 @@ let to_file ?alc ?(flags = []) path doc =
   write_file path doc (WriteFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 
-let to_bigstring ?alc ?(flags = []) doc =
+let to_string ?alc ?(flags = []) doc =
   write_opts doc (WriteFlag.to_int flags) (Option.map Alc.alc alc)
 ;;
 

@@ -43,6 +43,6 @@ val of_string
   -> doc
 
 val to_file : ?alc:Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
-val to_bigstring : ?alc:Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
+val to_string : ?alc:Alc.t -> ?flags:WriteFlag.t list -> doc -> string
 
 module Mutable = Mutable
