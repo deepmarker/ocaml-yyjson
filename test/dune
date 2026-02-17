@@ -2,8 +2,10 @@
  (name test)
  (deps market.json)
  (flags (-w -32))
+  (preprocess (pps ppx_jane))
  (libraries
    yyjson
    alcotest
    ocplib-json-typed
+   core
 ))

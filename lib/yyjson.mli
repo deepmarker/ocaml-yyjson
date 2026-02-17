@@ -1,9 +1,13 @@
-module Alc : module type of Alc
 include module type of Common
 
+(** Type of a doc, i.e. memory holding JSON data. *)
 type doc
+
+(** Type of a value, i.e. an iterator on [doc]. *)
 type va
-type value = va
+
+(** [value] is [{doc; va}]. Necessary for use with ocplib-json-typed. *)
+type value
 
 val view
   :  value
@@ -22,27 +26,13 @@ type version =
   }
 
 val version : version lazy_t
-val doc_get_root : doc -> value
+val doc_get_root : doc -> va
 val free_doc : doc -> unit
-val of_file : ?alc:Alc.t -> ?flags:ReadFlag.t list -> string -> doc
-
-val of_bigstring
-  :  ?alc:Alc.t
-  -> ?flags:ReadFlag.t list
-  -> ?pos:int
-  -> ?len:int
-  -> Bigstringaf.t
-  -> doc
-
-val of_string
-  :  ?alc:Alc.t
-  -> ?flags:ReadFlag.t list
-  -> ?pos:int
-  -> ?len:int
-  -> string
-  -> doc
-
-val to_file : ?alc:Alc.t -> ?flags:WriteFlag.t list -> string -> doc -> unit
-val to_bigstring : ?alc:Alc.t -> ?flags:WriteFlag.t list -> doc -> Bigstringaf.t
+val value_of_doc : doc -> value
+val of_file : ?flags:ReadFlag.t list -> string -> doc
+val of_bigstring : ?flags:ReadFlag.t list -> ?pos:int -> ?len:int -> Bigstringaf.t -> doc
+val of_string : ?flags:ReadFlag.t list -> ?pos:int -> ?len:int -> string -> doc
+val to_file : ?flags:WriteFlag.t list -> doc -> string -> unit
+val to_string : ?flags:WriteFlag.t list -> doc -> string
 
 module Mutable = Mutable
