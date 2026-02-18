@@ -32,13 +32,14 @@ let roundtrip doc enc =
       Format.printf "%a@." (Json_encoding.print_error ?print_unknown:None) exn;
       raise exn
   in
+  Yyjson.Mutable.new_doc ();
   let v = YYMut.construct enc xx in
   let va_json = Mutable.to_string (Mutable.doc_of_value v) in
   let doc = of_string va_json in
   let yy =
     try YY.destruct enc (value_of_doc doc) with
     | exn ->
-      Format.printf "%a" (Json_encoding.print_error ?print_unknown:None) exn;
+      Format.printf "%a@." (Json_encoding.print_error ?print_unknown:None) exn;
       raise exn
   in
   xx, yy
@@ -54,6 +55,7 @@ let rdtrip ?(n = 10000) str enc eq =
 ;;
 
 let rdtrip_gen ?(n = 100) enc v =
+  Yyjson.Mutable.new_doc ();
   let va = YYMut.construct enc v in
   let json = Mutable.to_string (Mutable.doc_of_value va) in
   let doc = of_string json in
@@ -245,7 +247,7 @@ module Snap = struct
     {|{"stream":"btcusdt@depth@0ms","data":{"e":"depthUpdate","E":1771241917899,"T":1771241917898,"s":"BTCUSDT","U":9922090297375,"u":9922090299939,"pu":9922090297219,"b":[["1000.00","33.811"],["5000.00","44.996"],["18115.80","0.154"],["18215.80","0.946"],["18315.80","0.242"],["18415.80","0.968"],["18515.80","0.990"],["38415.80","0.204"],["38515.80","0.096"],["66557.30","0.005"],["68551.40","0.172"],["68552.10","0.030"],["68568.00","0.019"],["68568.10","0.272"],["68575.70","0.002"],["68575.80","0.044"],["68580.00","0.028"],["68582.70","0.006"],["68590.00","3.466"],["68602.10","0.000"],["68604.90","0.186"],["68605.60","0.034"],["68612.60","0.000"],["68615.80","0.887"]],"a":[["68615.90","3.611"],["68617.20","0.002"],["68626.10","0.185"],["68626.80","0.252"],["68627.10","0.004"],["68635.20","0.034"],["68648.90","0.010"],["68650.50","1.614"],["68652.90","0.070"],["68653.60","0.232"],["68663.80","2.099"],["68664.00","0.010"],["68679.70","0.070"],["68680.30","0.185"],["69302.10","0.743"]]}}|}
   ;;
 
-  let payload_v () =
+  let payload_v payload =
     let doc = Yyjson.of_string payload in
     let v = Yyjson.value_of_doc doc in
     YY.destruct enc v
@@ -293,10 +295,11 @@ let basic =
   ; rdtrip "8499394102736" float (Alcotest.float 8499394102736.)
   ; rdtrip "8499394102736" int53 Alcotest.int64
   ; equal_int64 [ "8499394102736"; "8499394110956" ]
+    (* ; rdtrip {|"machin"|} string Alcotest.string *)
   ; rdtrip "3.0" float (Alcotest.float 0.1)
   ; rdtrip "{}" unit Alcotest.unit
   ; rdtrip "[]" (array int) Alcotest.(array int)
-    (* ; rdtrip {|{"a": 1}|} (obj1 (req "a" int)) Alcotest.int *)
+  ; rdtrip {|{"a": 1}|} (obj1 (req "a" int)) Alcotest.int
   ; rdtrip "[1]" (array int) Alcotest.(array int)
   ; rdtrip ~n:1 "[1,2,3]" (array int) Alcotest.(array int)
   ; rdtrip
@@ -310,7 +313,7 @@ let basic =
   ; rdtrip ~n:1 Snap.payload2 Snap.enc (module Snap)
   ; rdtrip ~n:1 Snap.payload3 Snap.enc (module Snap)
   ; Snap.twostep 10000
-    (* ; rdtrip_gen ~n:1000 Snap.enc Snap.payload_v *)
+    (* ; rdtrip_gen ~n:1000 Snap.enc (Snap.payload_v Snap.payload) *)
     (* ; rdtrip_gen (array int) (gen_int_arr 10000) *)
     (* ; rdtrip_gen (array (array string)) (gen_string_arr 5000) *)
     (* ; rdtrip *)

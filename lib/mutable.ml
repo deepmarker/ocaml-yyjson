@@ -81,8 +81,15 @@ let repr_aux doc v =
     { doc; va }
 ;;
 
+let doc = ref (lazy (create ()))
+
+let new_doc () =
+  if Lazy.is_val !doc then free (Lazy.force !doc);
+  doc := lazy (create ())
+;;
+
 let repr v =
-  let doc = create () in
+  let doc = Lazy.force !doc in
   let value = repr_aux doc v in
   doc_set_root doc value.va;
   value

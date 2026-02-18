@@ -14,6 +14,9 @@ val create : unit -> doc
 val free : doc -> unit
 val doc_set_root : doc -> va -> unit
 
+(* create a new doc before constructing a value with json-typed. *)
+val new_doc : unit -> unit
+
 (* Write functions *)
 
 val to_file : ?flags:WriteFlag.t list -> doc -> string -> unit
