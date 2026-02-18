@@ -4,9 +4,24 @@ include Common
 type doc
 type va
 
-external free_doc : doc -> unit = "ml_yyjson_doc_free" [@@noalloc]
-external doc_get_root : doc -> va = "ml_yyjson_doc_get_root"
+(* Always safe. *)
 external version : unit -> int = "ml_yyjson_version" [@@noalloc]
+external is_doc_null : doc -> bool = "ml_is_doc_null" [@@noalloc]
+external free_doc : doc -> unit = "ml_yyjson_doc_free" [@@noalloc]
+
+let with_check_doc0 f doc = if is_doc_null doc then raise Mutable.Doc_is_null else f doc
+
+let with_check_doc1 f doc va =
+  if is_doc_null doc then raise Mutable.Doc_is_null else f doc va
+;;
+
+let with_check_doc2 f doc v1 v2 =
+  if is_doc_null doc then raise Mutable.Doc_is_null else f doc v1 v2
+;;
+
+external doc_get_root : doc -> va = "ml_yyjson_doc_get_root"
+
+let doc_get_root = with_check_doc0 doc_get_root
 
 type version =
   { major : int
@@ -29,13 +44,28 @@ let value_of_doc doc = { doc; va = doc_get_root doc }
 
 external arr_iter : doc -> va -> va array = "ml_yyjson_array_iter"
 external obj_iter : doc -> va -> (string * va) array = "ml_yyjson_obj_iter"
-external get_type : doc -> va -> json_typ = "ml_yyjson_get_type"
-external get_subtype : doc -> va -> json_subtyp = "ml_yyjson_get_subtype"
-external _get_bool : doc -> va -> bool = "ml_yyjson_get_bool"
-external get_int : doc -> va -> int = "ml_yyjson_get_sint_int"
+
+let arr_iter = with_check_doc1 arr_iter
+let obj_iter = with_check_doc1 obj_iter
+
+(* no alloc*)
+external get_type : doc -> va -> json_typ = "ml_yyjson_get_type" [@@noalloc]
+external get_subtype : doc -> va -> json_subtyp = "ml_yyjson_get_subtype" [@@noalloc]
+external _get_bool : doc -> va -> bool = "ml_yyjson_get_bool" [@@noalloc]
+external get_int : doc -> va -> int = "ml_yyjson_get_sint_int" [@@noalloc]
+
+let get_type = with_check_doc1 get_type
+let get_subtype = with_check_doc1 get_subtype
+let get_int = with_check_doc1 get_int
+
+(* alloc *)
 external get_int64 : doc -> va -> int64 = "ml_yyjson_get_sint"
 external get_float : doc -> va -> float = "ml_yyjson_get_real"
 external get_string : doc -> va -> string = "ml_yyjson_get_str"
+
+let get_int64 = with_check_doc1 get_int64
+let get_float = with_check_doc1 get_float
+let get_string = with_check_doc1 get_string
 
 (* values created here have the same lifetime as doc. Make sure they
    are never GCed before doc in OCaml too. *)
@@ -90,6 +120,8 @@ let of_string ?(flags = []) ?(pos = 0) ?len src =
 external write_opts : doc -> int -> string = "ml_yyjson_write_opts"
 external write_file : doc -> string -> int -> unit = "ml_yyjson_write_file"
 
+let write_opts = with_check_doc1 write_opts
+let write_file = with_check_doc2 write_file
 let to_file ?(flags = []) path doc = write_file path doc (WriteFlag.to_int flags)
 let to_string ?(flags = []) doc = write_opts doc (WriteFlag.to_int flags)
 

@@ -9,6 +9,10 @@ type va
 (** [{doc; va}] required for ocplib-json-typed. *)
 type value
 
+(** Raised when calling a function on a doc that has been freed
+    already. *)
+exception Doc_is_null
+
 val doc_of_value : value -> doc
 val create : unit -> doc
 val free : doc -> unit

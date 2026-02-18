@@ -30,9 +30,12 @@ static struct custom_operations yyjson_mut_doc_ops = {
 #define Doc_val(v) (*((yyjson_doc **) Data_custom_val(v)))
 #define Mutdoc_val(v) (*((yyjson_mut_doc **) Data_custom_val(v)))
 
-#define Val_val(v) (*(yyjson_val **) Data_abstract_val(v))
-#define Mutval_val(v) (*(yyjson_mut_val **)Data_abstract_val(v))
-
+CAMLprim value ml_is_doc_null(value doc) {
+    return Val_bool(Doc_val(doc) == NULL);
+}
+CAMLprim value ml_is_mutdoc_null(value doc) {
+    return Val_bool(Mutdoc_val(doc) == NULL);
+}
 CAMLprim value ml_yyjson_version (value unit) {
     return(Val_int(yyjson_version()));
 }
@@ -69,14 +72,8 @@ CAMLprim value ml_yyjson_read_file(value file, value flg) {
 }
 
 CAMLprim value ml_yyjson_doc_get_root(value doc) {
-    CAMLparam1(doc);
-    CAMLlocal1(x);
-    x = caml_alloc(1, Abstract_tag);
-    yyjson_val *v = yyjson_doc_get_root(Doc_val(doc));
-    Val_val(x) = v;
-    CAMLreturn(x);
+    return Val_ptr(yyjson_doc_get_root(Doc_val(doc)));
 }
-
 CAMLprim value ml_yyjson_doc_get_read_size(value doc) {
     return Val_long(yyjson_doc_get_read_size(Doc_val(doc)));
 }
@@ -174,8 +171,8 @@ CAMLprim value ml_yyjson_mut_doc_free(value doc) {
 }
 
 CAMLprim value ml_yyjson_mut_doc_set_root(value doc, value root) {
-    yyjson_mut_doc_set_root(Mutdoc_val(doc), Mutval_val(root));
-    return Val_unit;
+  yyjson_mut_doc_set_root(Mutdoc_val(doc), Ptr_val(root));
+  return Val_unit;
 }
 
 // Mutable array API
@@ -185,19 +182,11 @@ CAMLprim value ml_yyjson_mut_arr(value doc) {
     CAMLlocal1(x);
     yyjson_mut_val *v = yyjson_mut_arr(Mutdoc_val(doc));
     if (!v) caml_failwith("yyjson_mut_arr");
-    x = caml_alloc(1, Abstract_tag);
-    Mutval_val(x) = v;
-    CAMLreturn(x);
+    CAMLreturn(Val_ptr(v));
 }
 
 CAMLprim value ml_yyjson_mut_arr_add_val(value doc, value arr, value v) {
-    CAMLparam3(doc, arr, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
-
-    bool res = yyjson_mut_arr_add_val(Mutval_val(arr), Mutval_val(v));
-    CAMLreturn(Val_bool(res));
+    return Val_bool(yyjson_mut_arr_add_val(Ptr_val(arr), Ptr_val(v)));
 }
 
 // Mutable object API
@@ -207,72 +196,32 @@ CAMLprim value ml_yyjson_mut_obj(value doc) {
     CAMLlocal1(x);
     yyjson_mut_val *v = yyjson_mut_obj(Mutdoc_val(doc));
     if (!v) caml_failwith("yyjson_mut_obj");
-    x = caml_alloc(1, Abstract_tag);
-    Mutval_val(x) = v;
-    CAMLreturn(x);
+    CAMLreturn(Val_ptr(v));
 }
 
 CAMLprim value ml_yyjson_mut_obj_add(value doc, value obj, value k, value v) {
-    CAMLparam4(doc, obj, k, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
-    bool ret = yyjson_mut_obj_add(Mutval_val(obj), Mutval_val(k), Mutval_val(v));
-    CAMLreturn(Val_bool(ret));
+    return Val_bool(yyjson_mut_obj_add(Ptr_val(obj), Ptr_val(k), Ptr_val(v)));
 }
 
 // Mutable value API
 
 CAMLprim value ml_yyjson_mut_null(value doc) {
-    CAMLparam1(doc);
-    CAMLlocal1(x);
-    x = caml_alloc(1, Abstract_tag);
-    yyjson_mut_val *v = yyjson_mut_null(Mutdoc_val(doc));
-    Mutval_val(x) = v;
-    CAMLreturn(x);
+    return Val_ptr(yyjson_mut_null(Mutdoc_val(doc)));
 }
-
 CAMLprim value ml_yyjson_mut_bool(value doc, value b) {
-    CAMLparam2(doc, b);
-    CAMLlocal1(x);
-    x = caml_alloc(1, Abstract_tag);
-    yyjson_mut_val *v = yyjson_mut_bool(Mutdoc_val(doc), Bool_val(b));
-    Mutval_val(x) = v;
-    CAMLreturn(x);
+    return Val_ptr(yyjson_mut_bool(Mutdoc_val(doc), Bool_val(b)));
 }
-
 CAMLprim value ml_yyjson_mut_uint(value doc, value b) {
-    CAMLparam2(doc, b);
-    CAMLlocal1(x);
-    x = caml_alloc(1, Abstract_tag);
-    yyjson_mut_val *v = yyjson_mut_uint(Mutdoc_val(doc), Long_val(b));
-    Mutval_val(x) = v;
-    CAMLreturn(x);
+    return Val_ptr(yyjson_mut_uint(Mutdoc_val(doc), Long_val(b)));
 }
 CAMLprim value ml_yyjson_mut_sint(value doc, value b) {
-    CAMLparam2(doc, b);
-    CAMLlocal1(x);
-    x = caml_alloc(1, Abstract_tag);
-    yyjson_mut_val *v = yyjson_mut_sint(Mutdoc_val(doc), Long_val(b));
-    Mutval_val(x) = v;
-    CAMLreturn(x);
+    return Val_ptr(yyjson_mut_sint(Mutdoc_val(doc), Long_val(b)));
 }
 CAMLprim value ml_yyjson_mut_real(value doc, value b) {
-    CAMLparam2(doc, b);
-    CAMLlocal1(x);
-    x = caml_alloc(1, Abstract_tag);
-    yyjson_mut_val *v = yyjson_mut_real(Mutdoc_val(doc), Double_val(b));
-    Mutval_val(x) = v;
-    CAMLreturn(x);
+    return Val_ptr(yyjson_mut_real(Mutdoc_val(doc), Double_val(b)));
 }
-
 CAMLprim value ml_yyjson_mut_strcpy(value doc, value b) {
-    CAMLparam2(doc, b);
-    CAMLlocal1(x);
-    x = caml_alloc(1, Abstract_tag);
-    yyjson_mut_val *v = yyjson_mut_strcpy(Mutdoc_val(doc), String_val(b));
-    Mutval_val(x) = v;
-    CAMLreturn(x);
+    return Val_ptr(yyjson_mut_strcpy(Mutdoc_val(doc), String_val(b)));
 }
 
 CAMLprim value ml_yyjson_array_iter(value doc, value v) {
@@ -283,17 +232,15 @@ CAMLprim value ml_yyjson_array_iter(value doc, value v) {
         caml_failwith("doc is NULL");
     }
 
-    yyjson_arr_iter iter = yyjson_arr_iter_with(Val_val(v));
+    yyjson_arr_iter iter = yyjson_arr_iter_with(Ptr_val(v));
     mlarr = caml_alloc_tuple(iter.max);
 
     for (size_t i = 0; i < iter.max; i++) {
-        elt = caml_alloc(1, Abstract_tag);
         if (Doc_val(doc) == NULL) {
             caml_failwith("doc is NULL");
         }
         yyjson_val *v = yyjson_arr_iter_next(&iter);
-        Val_val(elt) = v;
-        Store_field(mlarr, i, elt);
+        Store_field(mlarr, i, Val_ptr(v));
     }
 
     CAMLreturn(mlarr);
@@ -307,17 +254,15 @@ CAMLprim value ml_yyjson_mut_array_iter(value doc, value v) {
         caml_failwith("mutdoc is NULL");
     }
 
-    yyjson_mut_arr_iter iter = yyjson_mut_arr_iter_with(Mutval_val(v));
+    yyjson_mut_arr_iter iter = yyjson_mut_arr_iter_with(Ptr_val(v));
     mlarr = caml_alloc_tuple(iter.max);
 
     for (size_t i = 0; i < iter.max; i++) {
-        elt = caml_alloc(1, Abstract_tag);
         if (Mutdoc_val(doc) == NULL) {
             caml_failwith("mutdoc is NULL");
         }
         yyjson_mut_val *v = yyjson_mut_arr_iter_next(&iter);
-        Mutval_val(elt) = v;
-        Store_field(mlarr, i, elt);
+        Store_field(mlarr, i, Val_ptr(v));
     }
 
     CAMLreturn(mlarr);
@@ -327,25 +272,23 @@ CAMLprim value ml_yyjson_mut_array_iter(value doc, value v) {
 
 CAMLprim value ml_yyjson_obj_iter(value doc, value v) {
     CAMLparam2(doc, v);
-    CAMLlocal4(mlobj, mlk, mlv, tup);
+    CAMLlocal3(mlobj, mlk, tup);
 
     if (Doc_val(doc) == NULL) {
         caml_failwith("doc is NULL");
     }
 
-    yyjson_obj_iter iter = yyjson_obj_iter_with(Val_val(v));
+    yyjson_obj_iter iter = yyjson_obj_iter_with(Ptr_val(v));
     mlobj = caml_alloc_tuple(iter.max);
 
     for (int i = 0; i < iter.max; i++) {
         yyjson_val *key = yyjson_obj_iter_next(&iter);
         const char *keystr = yyjson_get_str(key);
         mlk = caml_copy_string(keystr);
-        mlv = caml_alloc(1, Abstract_tag);
         yyjson_val *v = yyjson_obj_iter_get_val(key);
-        Val_val(mlv) = v;
         tup = caml_alloc_tuple(2);
         Store_field(tup, 0, mlk);
-        Store_field(tup, 1, mlv);
+        Store_field(tup, 1, Val_ptr(v));
         Store_field(mlobj, i, tup);
     }
     CAMLreturn(mlobj);
@@ -353,25 +296,23 @@ CAMLprim value ml_yyjson_obj_iter(value doc, value v) {
 
 CAMLprim value ml_yyjson_mut_obj_iter(value doc, value v) {
     CAMLparam2(doc, v);
-    CAMLlocal4(mlobj, mlk, mlv, tup);
+    CAMLlocal3(mlobj, mlk, tup);
 
     if (Mutdoc_val(doc) == NULL) {
         caml_failwith("mutdoc is NULL");
     }
 
-    yyjson_mut_obj_iter iter = yyjson_mut_obj_iter_with(Mutval_val(v));
+    yyjson_mut_obj_iter iter = yyjson_mut_obj_iter_with(Ptr_val(v));
     mlobj = caml_alloc_tuple(iter.max);
 
     for (int i = 0; i < iter.max; i++) {
         yyjson_mut_val *key = yyjson_mut_obj_iter_next(&iter);
         const char *keystr = yyjson_mut_get_str(key);
         mlk = caml_copy_string(keystr);
-        mlv = caml_alloc(1, Abstract_tag);
         yyjson_mut_val *v = yyjson_mut_obj_iter_get_val(key);
-        Mutval_val(mlv) = v;
         tup = caml_alloc_tuple(2);
         Store_field(tup, 0, mlk);
-        Store_field(tup, 1, mlv);
+        Store_field(tup, 1, Val_ptr(v));
         Store_field(mlobj, i, tup);
     }
     CAMLreturn(mlobj);
@@ -380,125 +321,67 @@ CAMLprim value ml_yyjson_mut_obj_iter(value doc, value v) {
 // Value content API (immutable)
 
 CAMLprim value ml_yyjson_get_type(value doc, value v) {
-    CAMLparam2(doc, v);
-    if (Doc_val(doc) == NULL) {
-        caml_failwith("doc is NULL");
-    }
-    CAMLreturn(Val_int(yyjson_get_type(Val_val(v))));
+    return Val_int(yyjson_get_type(Ptr_val(v)));
 }
-
 CAMLprim value ml_yyjson_get_subtype(value doc, value v) {
-    CAMLparam2(doc, v);
-    if (Doc_val(doc) == NULL) {
-        caml_failwith("doc is NULL");
-    }
-    CAMLreturn(Val_int(yyjson_get_subtype(Val_val(v)) >> 3));
+    return Val_int(yyjson_get_subtype(Ptr_val(v)) >> 3);
 }
-
 CAMLprim value ml_yyjson_get_bool(value doc, value v) {
-    CAMLparam2(doc, v);
-    if (Doc_val(doc) == NULL) {
-        caml_failwith("doc is NULL");
-    }
-    CAMLreturn(Val_bool(yyjson_get_bool(Val_val(v))));
+    return Val_bool(yyjson_get_bool(Ptr_val(v)));
 }
-
 CAMLprim value ml_yyjson_get_sint_int(value doc, value v) {
-    CAMLparam2(doc, v);
-    if (Doc_val(doc) == NULL) {
-        caml_failwith("doc is NULL");
-    }
-    CAMLreturn(Val_long(yyjson_get_sint(Val_val(v))));
+    return Val_long(yyjson_get_sint(Ptr_val(v)));
 }
 
 CAMLprim value ml_yyjson_get_sint(value doc, value v) {
     CAMLparam2(doc, v);
-    if (Doc_val(doc) == NULL) {
-        caml_failwith("doc is NULL");
-    }
     CAMLlocal1(x);
-    x = caml_copy_int64(yyjson_get_sint(Val_val(v)));
+    x = caml_copy_int64(yyjson_get_sint(Ptr_val(v)));
     CAMLreturn(x);
 }
 CAMLprim value ml_yyjson_get_real(value doc, value v) {
     CAMLparam2(doc, v);
-    if (Doc_val(doc) == NULL) {
-        caml_failwith("doc is NULL");
-    }
     CAMLlocal1(x);
-    x = caml_copy_double(yyjson_get_real(Val_val(v)));
+    x = caml_copy_double(yyjson_get_real(Ptr_val(v)));
     CAMLreturn(x);
 }
-
 CAMLprim value ml_yyjson_get_str(value doc, value v) {
     CAMLparam2(doc, v);
-    if (Doc_val(doc) == NULL) {
-        caml_failwith("doc is NULL");
-    }
     CAMLlocal1(x);
-    x = caml_copy_string(yyjson_get_str(Val_val(v)));
+    x = caml_copy_string(yyjson_get_str(Ptr_val(v)));
     CAMLreturn(x);
 }
 
 // Mutable value content API
 
 CAMLprim value ml_yyjson_mut_get_type(value doc, value v) {
-    CAMLparam2(doc, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
-    CAMLreturn(Val_int(yyjson_mut_get_type(Mutval_val(v))));
+    return Val_int(yyjson_mut_get_type(Ptr_val(v)));
 }
 CAMLprim value ml_yyjson_mut_get_subtype(value doc, value v) {
-    CAMLparam2(doc, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
-    CAMLreturn(Val_int(yyjson_mut_get_subtype(Mutval_val(v)) >> 3));
+    return Val_int(yyjson_mut_get_subtype(Ptr_val(v)) >> 3);
 }
-
 CAMLprim value ml_yyjson_mut_get_bool(value doc, value v) {
-    CAMLparam2(doc, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
-    CAMLreturn(Val_bool(yyjson_mut_get_bool(Mutval_val(v))));
+    return Val_bool(yyjson_mut_get_bool(Ptr_val(v)));
 }
-
 CAMLprim value ml_yyjson_mut_get_int(value doc, value v) {
-    CAMLparam2(doc, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
-    CAMLreturn(Val_int(yyjson_mut_get_int(Mutval_val(v))));
+    return Val_int(yyjson_mut_get_int(Ptr_val(v)));
 }
 
 CAMLprim value ml_yyjson_mut_get_sint(value doc, value v) {
     CAMLparam2(doc, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
     CAMLlocal1(x);
-    x = caml_copy_int64(yyjson_mut_get_sint(Mutval_val(v)));
+    x = caml_copy_int64(yyjson_mut_get_sint(Ptr_val(v)));
     CAMLreturn(x);
 }
-
 CAMLprim value ml_yyjson_mut_get_real(value doc, value v) {
     CAMLparam2(doc, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
     CAMLlocal1(x);
-    x = caml_copy_double(yyjson_mut_get_real(Mutval_val(v)));
+    x = caml_copy_double(yyjson_mut_get_real(Ptr_val(v)));
     CAMLreturn(x);
 }
-
 CAMLprim value ml_yyjson_mut_get_str(value doc, value v) {
     CAMLparam2(doc, v);
-    if (Mutdoc_val(doc) == NULL) {
-        caml_failwith("mutdoc is NULL");
-    }
     CAMLlocal1(x);
-    x = caml_copy_string(yyjson_mut_get_str(Mutval_val(v)));
+    x = caml_copy_string(yyjson_mut_get_str(Ptr_val(v)));
     CAMLreturn(x);
 }
