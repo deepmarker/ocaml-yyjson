@@ -28,7 +28,19 @@ module ReadFlag = struct
     | Allow_bom
   [@@deriving variants]
 
-  let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor (1 lsl Variants.to_rank x))
+  let to_int = function
+    | No_read_flag -> 0
+    | Insitu -> 1 lsl 0
+    | Stop_when_done -> 1 lsl 1
+    | Allow_trailing_commas -> 1 lsl 2
+    | Allow_inf_and_nan -> 1 lsl 3
+    | Number_as_raw -> 1 lsl 4
+    | Allow_invalid_unicode -> 1 lsl 5
+    | Bignum_as_raw -> 1 lsl 6
+    | Allow_bom -> 1 lsl 7
+  ;;
+
+  let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor to_int x)
 end
 
 module ReadCode = struct
@@ -63,5 +75,17 @@ module WriteFlag = struct
     | NewlineAtEnd
   [@@deriving variants]
 
-  let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor (1 lsl Variants.to_rank x))
+  let to_int = function
+    | NoWriteFlag -> 0
+    | Pretty -> 1 lsl 0
+    | EscapeUnicode -> 1 lsl 1
+    | EscapeSlashes -> 1 lsl 2
+    | AllowInfAndNan -> 1 lsl 3
+    | InfAndNanAsNull -> 1 lsl 4
+    | AllowInvalidUnicode -> 1 lsl 5
+    | PrettyTwoSpaces -> 1 lsl 6
+    | NewlineAtEnd -> 1 lsl 7
+  ;;
+
+  let to_int = List.fold_left ~init:0 ~f:(fun a x -> a lor to_int x)
 end

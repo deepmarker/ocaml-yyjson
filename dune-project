@@ -23,9 +23,11 @@
    ocaml
    dune
    bigstringaf
-   ppx_jane
-   (alcotest :with-test)
-   (json-data-encoding :with-test)
+  (alcotest :with-test)
+  (base :with-test)
+  (ppx_sexp_conv :with-test)
+  (ppx_compare :with-test)
+  (json-data-encoding :with-test)
  )
  (tags
   (topics "to describe" your project)))

@@ -13,8 +13,10 @@ depends: [
   "ocaml"
   "dune" {>= "3.5"}
   "bigstringaf"
-  "ppx_jane"
   "alcotest" {with-test}
+  "base" {with-test}
+  "ppx_sexp_conv" {with-test}
+  "ppx_compare" {with-test}
   "json-data-encoding" {with-test}
   "odoc" {with-doc}
 ]

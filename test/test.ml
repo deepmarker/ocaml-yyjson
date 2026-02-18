@@ -1,4 +1,5 @@
-open Core
+open Base
+open Sexplib.Std
 open Yyjson
 open Alcotest
 
@@ -29,7 +30,7 @@ let roundtrip doc enc =
   let xx =
     try YY.destruct enc (value_of_doc doc) with
     | exn ->
-      Format.printf "%a@." (Json_encoding.print_error ?print_unknown:None) exn;
+      Stdlib.Format.printf "%a@." (Json_encoding.print_error ?print_unknown:None) exn;
       raise exn
   in
   Yyjson.Mutable.new_doc ();
@@ -39,7 +40,7 @@ let roundtrip doc enc =
   let yy =
     try YY.destruct enc (value_of_doc doc) with
     | exn ->
-      Format.printf "%a@." (Json_encoding.print_error ?print_unknown:None) exn;
+      Stdlib.Format.printf "%a@." (Json_encoding.print_error ?print_unknown:None) exn;
       raise exn
   in
   xx, yy

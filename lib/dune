@@ -1,7 +1,6 @@
 (library
  (name yyjson)
  (public_name yyjson)
- (preprocess (pps ppx_jane))
  (libraries
    bigstringaf)
  (foreign_stubs
