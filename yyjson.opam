@@ -15,7 +15,7 @@ depends: [
   "bigstringaf"
   "ppx_jane"
   "alcotest" {with-test}
-  "ocplib-json-typed" {with-test}
+  "json-data-encoding" {with-test}
   "odoc" {with-doc}
 ]
 build: [

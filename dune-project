@@ -25,7 +25,7 @@
    bigstringaf
    ppx_jane
    (alcotest :with-test)
-   (ocplib-json-typed :with-test)
+   (json-data-encoding :with-test)
  )
  (tags
   (topics "to describe" your project)))

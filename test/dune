@@ -6,6 +6,6 @@
  (libraries
    yyjson
    alcotest
-   ocplib-json-typed
+   json-data-encoding
    core
 ))
