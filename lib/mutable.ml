@@ -2,7 +2,7 @@ open StdLabels
 open Common
 
 type doc
-type va
+type va [@@immediate]
 
 exception Doc_is_null
 

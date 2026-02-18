@@ -2,7 +2,7 @@ open StdLabels
 include Common
 
 type doc
-type va
+type va [@@immediate]
 
 (* Always safe. *)
 external version : unit -> int = "ml_yyjson_version" [@@noalloc]
@@ -41,6 +41,7 @@ type value =
   }
 
 let value_of_doc doc = { doc; va = doc_get_root doc }
+let doc_of_value { doc; _ } = doc
 
 external arr_iter : doc -> va -> va array = "ml_yyjson_array_iter"
 external obj_iter : doc -> va -> (string * va) array = "ml_yyjson_obj_iter"
@@ -118,11 +119,14 @@ let of_string ?(flags = []) ?(pos = 0) ?len src =
 ;;
 
 external write_opts : doc -> int -> string = "ml_yyjson_write_opts"
+external write_opts_val : doc -> va -> int -> string = "ml_yyjson_val_write_opts"
 external write_file : doc -> string -> int -> unit = "ml_yyjson_write_file"
 
 let write_opts = with_check_doc1 write_opts
 let write_file = with_check_doc2 write_file
+let write_opts_val = with_check_doc2 write_opts_val
 let to_file ?(flags = []) path doc = write_file path doc (WriteFlag.to_int flags)
 let to_string ?(flags = []) doc = write_opts doc (WriteFlag.to_int flags)
+let to_string_val ?(flags = []) doc va = write_opts_val doc va (WriteFlag.to_int flags)
 
 module Mutable = Mutable
