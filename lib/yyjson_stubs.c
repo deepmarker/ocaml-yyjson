@@ -120,6 +120,22 @@ CAMLprim value ml_yyjson_val_write_opts(value doc, value val, value flg) {
     CAMLreturn(x);
 }
 
+CAMLprim value ml_yyjson_mut_val_write_opts(value doc, value val, value flg) {
+    CAMLparam3(doc, val, flg);
+    CAMLlocal1(x);
+    yyjson_write_err err;
+    size_t len;
+    char* res = yyjson_mut_val_write_opts(Ptr_val(val),
+                                  Int_val(flg),
+                                  NULL,
+                                  &len,
+                                  &err);
+    if (res == NULL) caml_failwith(err.msg);
+    x = caml_copy_string(res);
+    free(res);
+    CAMLreturn(x);
+}
+
 CAMLprim value ml_yyjson_write_file(value doc, value path, value flg) {
     CAMLparam3(path, doc, flg);
     CAMLlocal1(x);

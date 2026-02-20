@@ -7,7 +7,10 @@ type doc
 type va
 
 (** [{doc; va}] required for ocplib-json-typed. *)
-type value
+type value =
+  { doc : doc
+  ; va : va
+  }
 
 (** Raised when calling a function on a doc that has been freed
     already. *)
@@ -25,6 +28,7 @@ val new_doc : unit -> unit
 
 val to_file : ?flags:WriteFlag.t list -> doc -> string -> unit
 val to_string : ?flags:WriteFlag.t list -> doc -> string
+val to_string_val : ?flags:WriteFlag.t list -> doc -> va -> string
 
 val view
   :  value

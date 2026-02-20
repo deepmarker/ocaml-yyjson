@@ -78,9 +78,11 @@ let obj_iter = with_check_doc1 obj_iter
 
 (* write functions *)
 external write_opts : doc -> int -> string = "ml_yyjson_mut_write_opts"
+external write_val_opts : doc -> va -> int -> string = "ml_yyjson_mut_val_write_opts"
 external write_file : doc -> string -> int -> unit = "ml_yyjson_mut_write_file"
 
 let write_opts = with_check_doc1 write_opts
+let write_val_opts = with_check_doc1 write_val_opts
 let write_file = with_check_doc2 write_file
 
 type value =
@@ -165,3 +167,4 @@ let view { doc; va } =
 
 let to_file ?(flags = []) doc path = write_file doc path (WriteFlag.to_int flags)
 let to_string ?(flags = []) doc = write_opts doc (WriteFlag.to_int flags)
+let to_string_val ?(flags = []) doc va = write_val_opts doc va (WriteFlag.to_int flags)
