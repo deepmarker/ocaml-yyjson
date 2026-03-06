@@ -19,12 +19,6 @@ module YY = Json_encoding.Make (struct
     let repr_uid = Json_repr.repr_uid ()
   end)
 
-module YYMut = Json_encoding.Make (struct
-    include Yyjson.Mutable
-
-    let repr_uid = Json_repr.repr_uid ()
-  end)
-
 let roundtrip doc enc =
   (* XXX *)
   let xx =
@@ -33,9 +27,8 @@ let roundtrip doc enc =
       Stdlib.Format.printf "%a@." (Json_encoding.print_error ?print_unknown:None) exn;
       raise exn
   in
-  Yyjson.Mutable.new_doc ();
-  let v = YYMut.construct enc xx in
-  let va_json = Mutable.to_string (Mutable.doc_of_value v) in
+  let v = Json_encoding.construct enc xx in
+  let va_json = Ezjsonm.value_to_string v in
   let doc = of_string va_json in
   let yy =
     try YY.destruct enc (value_of_doc doc) with
@@ -56,9 +49,8 @@ let rdtrip ?(n = 10000) str enc eq =
 ;;
 
 let rdtrip_gen ?(n = 100) enc v =
-  Yyjson.Mutable.new_doc ();
-  let va = YYMut.construct enc v in
-  let json = Mutable.to_string (Mutable.doc_of_value va) in
+  let va = Json_encoding.construct enc v in
+  let json = Ezjsonm.value_to_string va in
   let doc = of_string json in
   test_case "gen" `Quick (fun () ->
     for _ = 0 to n - 1 do

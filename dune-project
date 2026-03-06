@@ -27,7 +27,7 @@
   (base :with-test)
   (ppx_sexp_conv :with-test)
   (ppx_compare :with-test)
-  (json-data-encoding :with-test)
+  (ezjsonm :with-test)
  )
  (tags
   (topics "to describe" your project)))
