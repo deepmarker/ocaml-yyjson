@@ -168,3 +168,4 @@ let view { doc; va } =
 let to_file ?(flags = []) doc path = write_file doc path (WriteFlag.to_int flags)
 let to_string ?(flags = []) doc = write_opts doc (WriteFlag.to_int flags)
 let to_string_val ?(flags = []) doc va = write_val_opts doc va (WriteFlag.to_int flags)
+let pp_value ppf { doc; va } = Format.fprintf ppf "%s" (to_string_val doc va)

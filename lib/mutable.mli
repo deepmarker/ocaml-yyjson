@@ -29,6 +29,7 @@ val new_doc : unit -> unit
 val to_file : ?flags:WriteFlag.t list -> doc -> string -> unit
 val to_string : ?flags:WriteFlag.t list -> doc -> string
 val to_string_val : ?flags:WriteFlag.t list -> doc -> va -> string
+val pp_value : Format.formatter -> value -> unit
 
 val view
   :  value
