@@ -1,13 +1,8 @@
 (test
  (name test)
  (deps market.json)
- (flags (-w -32))
-  (preprocess (pps ppx_sexp_conv ppx_compare))
- (libraries
-   ezjsonm
-   base
-   sexplib
-   yyjson
-   alcotest
-   json-data-encoding
-))
+ (flags
+  (-w -32))
+ (preprocess
+  (pps ppx_sexp_conv ppx_compare))
+ (libraries ezjsonm base sexplib yyjson alcotest json-data-encoding))

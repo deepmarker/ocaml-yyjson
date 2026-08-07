@@ -1,11 +1,8 @@
 (library
  (name yyjson)
  (public_name yyjson)
- (libraries
-   bigstringaf)
+ (libraries bigstringaf)
  (foreign_stubs
   (language c)
   (names yyjson_stubs))
  (c_library_flags :standard -lyyjson))
-
-
