@@ -326,6 +326,42 @@ CAMLprim value ml_yyjson_obj_iter(value doc, value v) {
     CAMLreturn(mlobj);
 }
 
+CAMLprim value ml_yyjson_obj_get(value doc, value obj, value key) {
+    CAMLparam3(doc, obj, key);
+    CAMLlocal1(some);
+
+    if (Doc_val(doc) == NULL) {
+        caml_failwith("doc is NULL");
+    }
+
+    yyjson_val *found = yyjson_obj_getn(Ptr_val(obj),
+                                        String_val(key),
+                                        caml_string_length(key));
+    if (found == NULL) CAMLreturn(Val_int(0));
+    some = caml_alloc_small(1, 0);
+    Field(some, 0) = Val_ptr(found);
+    CAMLreturn(some);
+}
+
+CAMLprim value ml_yyjson_obj_get_string(value doc, value obj, value key) {
+    CAMLparam3(doc, obj, key);
+    CAMLlocal2(some, string);
+
+    if (Doc_val(doc) == NULL) {
+        caml_failwith("doc is NULL");
+    }
+
+    yyjson_val *found = yyjson_obj_getn(Ptr_val(obj),
+                                        String_val(key),
+                                        caml_string_length(key));
+    const char *contents = yyjson_get_str(found);
+    if (contents == NULL) CAMLreturn(Val_int(0));
+    string = caml_alloc_initialized_string(yyjson_get_len(found), contents);
+    some = caml_alloc_small(1, 0);
+    Field(some, 0) = string;
+    CAMLreturn(some);
+}
+
 CAMLprim value ml_yyjson_mut_obj_iter(value doc, value v) {
     CAMLparam2(doc, v);
     CAMLlocal3(mlobj, mlk, tup);

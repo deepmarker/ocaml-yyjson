@@ -45,9 +45,25 @@ let doc_of_value { doc; _ } = doc
 
 external arr_iter : doc -> va -> va array = "ml_yyjson_array_iter"
 external obj_iter : doc -> va -> (string * va) array = "ml_yyjson_obj_iter"
+external obj_get_va : doc -> va -> string -> va option = "ml_yyjson_obj_get"
+
+external obj_get_string_va
+  :  doc
+  -> va
+  -> string
+  -> string option
+  = "ml_yyjson_obj_get_string"
 
 let arr_iter = with_check_doc1 arr_iter
 let obj_iter = with_check_doc1 obj_iter
+
+let obj_get { doc; va } key =
+  match obj_get_va doc va key with
+  | None -> None
+  | Some va -> Some { doc; va }
+;;
+
+let obj_get_string { doc; va } key = obj_get_string_va doc va key
 
 (* no alloc*)
 external get_type : doc -> va -> json_typ = "ml_yyjson_get_type" [@@noalloc]
@@ -67,6 +83,12 @@ external get_string : doc -> va -> string = "ml_yyjson_get_str"
 let get_int64 = with_check_doc1 get_int64
 let get_float = with_check_doc1 get_float
 let get_string = with_check_doc1 get_string
+
+let string_value { doc; va } =
+  match get_type doc va with
+  | Str -> Some (get_string doc va)
+  | _ -> None
+;;
 
 (* values created here have the same lifetime as doc. Make sure they
    are never GCed before doc in OCaml too. *)

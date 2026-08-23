@@ -12,6 +12,17 @@ let version () =
   check int "patch" ver.(2) x.patch
 ;;
 
+let object_lookup () =
+  let doc = of_string {|{"name":"value","nested":{"key":"a\u0000b"},"number":3}|} in
+  let root = value_of_doc doc in
+  check (option string) "string member" (Some "value") (obj_get_string root "name");
+  check (option string) "missing member" None (obj_get_string root "missing");
+  check (option string) "wrong member type" None (obj_get_string root "number");
+  let nested = Option.value_exn (obj_get root "nested") in
+  check (option string) "embedded NUL" (Some "a\000b") (obj_get_string nested "key");
+  free_doc doc
+;;
+
 module YY = Json_encoding.Make (struct
     include Yyjson
 
@@ -282,6 +293,7 @@ let equal_int64 ints =
 let basic =
   let open Json_encoding in
   [ test_case "version" `Quick version
+  ; test_case "direct object lookup" `Quick object_lookup
   ; rdtrip ~n:1 "3" int Alcotest.int
   ; rdtrip "true" bool Alcotest.bool
   ; rdtrip "false" bool Alcotest.bool
