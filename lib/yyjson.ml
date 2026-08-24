@@ -90,6 +90,19 @@ let string_value { doc; va } =
   | _ -> None
 ;;
 
+let int64_value { doc; va } =
+  match get_type doc va, get_subtype doc va with
+  | Num, Real -> None
+  | Num, _ -> Some (get_int64 doc va)
+  | _ -> None
+;;
+
+let array_values { doc; va } =
+  match get_type doc va with
+  | Arr -> Some (Array.map (arr_iter doc va) ~f:(fun va -> { doc; va }))
+  | _ -> None
+;;
+
 (* values created here have the same lifetime as doc. Make sure they
    are never GCed before doc in OCaml too. *)
 let view { doc; va } =

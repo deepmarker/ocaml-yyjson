@@ -46,6 +46,14 @@ val obj_get_string : value -> string -> string option
 (** [string_value value] copies and returns [value] when it is a JSON string. *)
 val string_value : value -> string option
 
+(** [int64_value value] returns an integral JSON number without converting it
+    through a float. *)
+val int64_value : value -> int64 option
+
+(** [array_values value] returns the array elements without constructing a
+    generic JSON view. *)
+val array_values : value -> value array option
+
 val of_file : ?flags:ReadFlag.t list -> string -> doc
 val of_bigstring : ?flags:ReadFlag.t list -> ?pos:int -> ?len:int -> Bigstringaf.t -> doc
 val of_string : ?flags:ReadFlag.t list -> ?pos:int -> ?len:int -> string -> doc

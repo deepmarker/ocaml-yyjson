@@ -13,11 +13,27 @@ let version () =
 ;;
 
 let object_lookup () =
-  let doc = of_string {|{"name":"value","nested":{"key":"a\u0000b"},"number":3}|} in
+  let doc =
+    of_string
+      {|{"name":"value","nested":{"key":"a\u0000b"},"number":3,"real":3.5,"array":[1,2]}|}
+  in
   let root = value_of_doc doc in
   check (option string) "string member" (Some "value") (obj_get_string root "name");
   check (option string) "missing member" None (obj_get_string root "missing");
   check (option string) "wrong member type" None (obj_get_string root "number");
+  check
+    (option int64)
+    "integer member"
+    (Some 3L)
+    (Option.bind (obj_get root "number") ~f:int64_value);
+  check
+    (option int64)
+    "real is not an integer"
+    None
+    (Option.bind (obj_get root "real") ~f:int64_value);
+  let array = Option.bind (obj_get root "array") ~f:array_values |> Option.value_exn in
+  check int "array length" 2 (Array.length array);
+  check (option int64) "array value" (Some 2L) (int64_value array.(1));
   let nested = Option.value_exn (obj_get root "nested") in
   check (option string) "embedded NUL" (Some "a\000b") (obj_get_string nested "key");
   free_doc doc
