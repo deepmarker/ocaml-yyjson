@@ -76,6 +76,35 @@ val uint64_value : value -> int64 option
     generic JSON view. *)
 val array_values : value -> value array option
 
+(** A cursor over an object's members.
+
+    [obj_get] restarts the search for every member, so reading [n] members
+    costs [n] searches. A cursor resumes where the previous lookup stopped,
+    which reads them in one pass when the lookup order matches the
+    document's key order — the usual case for a decoder that knows its
+    fields at compile time. Keys that are out of order, or absent, are
+    still found or reported correctly: the scan wraps around.
+
+    A cursor borrows from its document and must not outlive it. *)
+type obj_cursor
+
+(** [obj_cursor value] is a cursor over [value]'s members, or [None] if it
+    is not an object. *)
+val obj_cursor : value -> obj_cursor option
+
+(** [cursor_get cursor key] is the member named [key], or [None] if it is
+    absent. Advances the cursor past the member it found. *)
+val cursor_get : obj_cursor -> string -> value option
+
+(** [arr_length value] is the number of array elements, or [None] if
+    [value] is not an array. *)
+val arr_length : value -> int option
+
+(** [arr_fold value ~init ~f] folds over the array elements in order,
+    stepping the document in place rather than building the intermediate
+    array [array_values] returns. [None] if [value] is not an array. *)
+val arr_fold : value -> init:'a -> f:('a -> value -> 'a) -> 'a option
+
 val of_file : ?flags:ReadFlag.t list -> string -> doc
 val of_bigstring : ?flags:ReadFlag.t list -> ?pos:int -> ?len:int -> Bigstringaf.t -> doc
 val of_string : ?flags:ReadFlag.t list -> ?pos:int -> ?len:int -> string -> doc

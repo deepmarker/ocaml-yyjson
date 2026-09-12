@@ -39,6 +39,30 @@ Yyjson.free_doc doc
 float. `int64_value` returns `None` for an unsigned value above
 `Int64.max_int`; `uint64_value` returns its bit pattern for those.
 
+### Reading many fields, or long arrays
+
+`obj_get` restarts the search for each member, so reading an *n*-field record
+costs *n* searches. When the fields are known ahead of time — a decoder, hand
+written or generated — a cursor reads them in a single pass instead, resuming
+where the previous lookup stopped. Keys that are absent, or out of order, are
+still handled correctly; the scan wraps around.
+
+```ocaml
+let cursor = Option.get (Yyjson.obj_cursor root) in
+let symbol = Yyjson.cursor_get cursor "s" in
+let event_time = Yyjson.cursor_get cursor "E" in
+```
+
+`arr_fold` walks an array in place, without building the intermediate array
+that `array_values` returns, and `arr_length` sizes a result up front. Both
+step by container offset, so they stay O(1) per element on arrays of arrays,
+where indexed access degrades to a linear search.
+
+```ocaml
+(* [None] if [levels] is not an array. *)
+let count : int option = Yyjson.arr_fold levels ~init:0 ~f:(fun n _ -> n + 1)
+```
+
 ### `view` — generic, for `Json_repr` interop
 
 `view` produces the polymorphic-variant JSON view that

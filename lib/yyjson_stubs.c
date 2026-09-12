@@ -371,6 +371,67 @@ CAMLprim value ml_yyjson_obj_get(value doc, value obj, value key) {
     CAMLreturn(some);
 }
 
+/* Ordered member lookup.
+
+   yyjson_obj_iter_getn resumes the scan where the previous lookup stopped
+   and wraps around, so reading n members in the document's own key order
+   costs one pass instead of n independent searches.
+
+   The iterator lives in an abstract block rather than a custom one: it
+   borrows pointers into the document and owns nothing, so there is nothing
+   to finalize, and compare, hash and marshal are all meaningless for it.
+   That saves the ops word a custom block spends, and the indirection
+   through it. Like a custom block, an abstract block is not traced by the
+   GC, which is what makes it legal to hold raw pointers -- and it must
+   therefore never hold an OCaml value. */
+
+#define Objiter_wosize \
+    ((sizeof(yyjson_obj_iter) + sizeof(value) - 1) / sizeof(value))
+#define Objiter_val(v) ((yyjson_obj_iter *) Data_abstract_val(v))
+
+CAMLprim value ml_yyjson_obj_iter_init(value doc, value v) {
+    CAMLparam2(doc, v);
+    CAMLlocal1(x);
+
+    if (Doc_val(doc) == NULL) {
+        caml_failwith("doc is NULL");
+    }
+
+    /* An abstract block is not zero-filled, but yyjson_obj_iter_init writes
+       every field. It clears the iterator if the value is not an object,
+       which makes every subsequent lookup return NULL. */
+    x = caml_alloc_small(Objiter_wosize, Abstract_tag);
+    yyjson_obj_iter_init(Ptr_val(v), Objiter_val(x));
+    CAMLreturn(x);
+}
+
+CAMLprim value ml_yyjson_obj_iter_getn(value it, value key) {
+    CAMLparam2(it, key);
+    CAMLlocal1(some);
+
+    yyjson_val *found = yyjson_obj_iter_getn(Objiter_val(it),
+                                             String_val(key),
+                                             caml_string_length(key));
+    if (found == NULL) CAMLreturn(Val_int(0));
+    some = caml_alloc_small(1, 0);
+    Field(some, 0) = Val_ptr(found);
+    CAMLreturn(some);
+}
+
+/* Array stepping, so a fold needs no intermediate array. get_next handles
+   the container offset, so this is O(1) per element even when the array is
+   not flat -- unlike yyjson_arr_get, which is a linear search. */
+
+CAMLprim value ml_yyjson_arr_size(value doc, value v) {
+    return Val_long(yyjson_arr_size(Ptr_val(v)));
+}
+CAMLprim value ml_yyjson_arr_first(value doc, value v) {
+    return Val_ptr(yyjson_arr_get_first(Ptr_val(v)));
+}
+CAMLprim value ml_yyjson_arr_next(value doc, value v) {
+    return Val_ptr(unsafe_yyjson_get_next(Ptr_val(v)));
+}
+
 CAMLprim value ml_yyjson_obj_get_string(value doc, value obj, value key) {
     CAMLparam3(doc, obj, key);
     CAMLlocal2(some, string);

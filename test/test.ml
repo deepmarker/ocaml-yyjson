@@ -416,6 +416,52 @@ let mutable_doc () =
     ignore (Yyjson.Mutable.get_string d s))
 ;;
 
+let ordered_lookup () =
+  let doc = of_string {|{"a":1,"b":2,"c":3,"d":4}|} in
+  let root = value_of_doc doc in
+  let c = Option.value_exn (obj_cursor root) in
+  let get k = Option.bind (cursor_get c k) ~f:int64_value in
+  check (option int64) "in order" (Some 1L) (get "a");
+  check (option int64) "skips ahead" (Some 3L) (get "c");
+  (* Out of order: the scan wraps around rather than missing the key. *)
+  check (option int64) "wraps backwards" (Some 2L) (get "b");
+  check (option int64) "forwards again" (Some 4L) (get "d");
+  check (option int64) "absent key" None (get "zz");
+  (* A miss must leave the cursor usable. *)
+  check (option int64) "usable after a miss" (Some 1L) (get "a");
+  let not_obj = Option.value_exn (obj_get root "a") in
+  check bool "cursor on a non-object" true (Option.is_none (obj_cursor not_obj))
+;;
+
+let array_stepping () =
+  let v s = value_of_doc (of_string s) in
+  let flat = v "[10,20,30]" in
+  check (option int) "length" (Some 3) (arr_length flat);
+  check
+    (option int64)
+    "fold sums"
+    (Some 60L)
+    (arr_fold flat ~init:0L ~f:(fun acc x ->
+       Int64.( + ) acc (Option.value_exn (int64_value x))));
+  check
+    (option (list int64))
+    "fold visits in order"
+    (Some [ 30L; 20L; 10L ])
+    (arr_fold flat ~init:[] ~f:(fun acc x -> Option.value_exn (int64_value x) :: acc));
+  let empty = v "[]" in
+  check (option int) "empty length" (Some 0) (arr_length empty);
+  check (option int64) "empty fold" (Some 0L) (arr_fold empty ~init:0L ~f:(fun a _ -> a));
+  (* Non-flat arrays: stepping must follow the container offset, which is
+     where indexed access would degrade to a linear search. *)
+  let nested = v "[[1,2],[3],[4,5,6]]" in
+  check
+    (option (list int))
+    "steps over nested containers"
+    (Some [ 3; 1; 2 ])
+    (arr_fold nested ~init:[] ~f:(fun acc x -> Option.value_exn (arr_length x) :: acc));
+  check (option int) "not an array" None (arr_length (v {|{"x":1}|}))
+;;
+
 let basic =
   let open Json_encoding in
   [ test_case "version" `Quick version
@@ -425,6 +471,8 @@ let basic =
   ; test_case "embedded NUL" `Quick embedded_nul
   ; test_case "integer range" `Quick integers
   ; test_case "mutable doc" `Quick mutable_doc
+  ; test_case "ordered lookup" `Quick ordered_lookup
+  ; test_case "array stepping" `Quick array_stepping
   ; rdtrip ~n:1 "3" int Alcotest.int
   ; rdtrip "true" bool Alcotest.bool
   ; rdtrip "false" bool Alcotest.bool

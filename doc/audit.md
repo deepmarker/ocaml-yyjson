@@ -265,6 +265,9 @@ is now a regression test in `test/test.ml` (`read flag mapping`, `raw view`,
 Not done, in rough priority order:
 
 - **C** — `view` is inherently the slow path; use the direct accessor API.
+  Since this audit the direct API has gained `obj_cursor`/`cursor_get` for
+  single-pass member reads and `arr_fold`/`arr_length` for allocation-free
+  array traversal, which is what a decoder should be built on.
 - **E** — expose 0.13.0's `write_buf()`.
 - The `json_subtyp` constructors (`NoneFalseUint`, `TrueSintNoesc`) are named
   after yyjson's bit encoding rather than their meaning, which is why the

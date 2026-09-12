@@ -171,6 +171,54 @@ let array_values { doc; va } =
   | _ -> None
 ;;
 
+type obj_iter
+
+external obj_iter_init : doc -> va -> obj_iter = "ml_yyjson_obj_iter_init"
+external obj_iter_getn : obj_iter -> string -> va option = "ml_yyjson_obj_iter_getn"
+
+type obj_cursor =
+  { cursor_doc : doc
+  ; cursor_iter : obj_iter
+  }
+
+let obj_cursor { doc; va } =
+  match get_type doc va with
+  | Obj -> Some { cursor_doc = doc; cursor_iter = obj_iter_init doc va }
+  | _ -> None
+;;
+
+let cursor_get { cursor_doc = doc; cursor_iter } key =
+  match obj_iter_getn cursor_iter key with
+  | None -> None
+  | Some va -> Some { doc; va }
+;;
+
+external arr_size_unsafe : doc -> va -> int = "ml_yyjson_arr_size" [@@noalloc]
+external arr_first_unsafe : doc -> va -> va = "ml_yyjson_arr_first" [@@noalloc]
+external arr_next_unsafe : doc -> va -> va = "ml_yyjson_arr_next" [@@noalloc]
+
+let arr_length { doc; va } =
+  match get_type doc va with
+  | Arr -> Some (arr_size_unsafe doc va)
+  | _ -> None
+;;
+
+(* Steps the array in place rather than materialising [array_values]'
+   intermediate array. The element pointer past the last element is
+   computed but never dereferenced, which is why the loop counts. *)
+let arr_fold { doc; va } ~init ~f =
+  match get_type doc va with
+  | Arr ->
+    let n = arr_size_unsafe doc va in
+    let rec go acc i cur =
+      if i >= n
+      then acc
+      else go (f acc { doc; va = cur }) (i + 1) (arr_next_unsafe doc cur)
+    in
+    Some (go init 0 (arr_first_unsafe doc va))
+  | _ -> None
+;;
+
 (* values created here have the same lifetime as doc. Make sure they
    are never GCed before doc in OCaml too. *)
 let view { doc; va } =
