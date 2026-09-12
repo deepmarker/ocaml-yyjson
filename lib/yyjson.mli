@@ -58,8 +58,21 @@ val obj_get : value -> string -> value option
     [key]. It is [None] if the member is absent or is not a JSON string. *)
 val obj_get_string : value -> string -> string option
 
+(** [typ value] is the value's JSON type. Unlike [view] it inspects the
+    value without materialising anything, so it is the cheap way to branch
+    on a value's shape or to report what was actually found. *)
+val typ : value -> json_typ
+
 (** [string_value value] copies and returns [value] when it is a JSON string. *)
 val string_value : value -> string option
+
+(** [bool_value value] is the boolean, or [None] if [value] is not one. *)
+val bool_value : value -> bool option
+
+(** [float_value value] is any JSON number as a float, integer subtypes
+    included. [None] if [value] is not a number. Integers above 2^53 lose
+    precision here by definition: read those with [int64_value]. *)
+val float_value : value -> float option
 
 (** [int64_value value] returns an integral JSON number without converting it
     through a float. It is [None] for a real, and for an unsigned integer

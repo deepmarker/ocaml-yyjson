@@ -416,6 +416,33 @@ let mutable_doc () =
     ignore (Yyjson.Mutable.get_string d s))
 ;;
 
+let scalars () =
+  let v s = value_of_doc (of_string s) in
+  let is_typ t x =
+    match typ (v x), t with
+    | Str, `Str | Num, `Num | Bool, `Bool | Null, `Null | Arr, `Arr | Obj, `Obj -> true
+    | _ -> false
+  in
+  check (option bool) "true" (Some true) (bool_value (v "true"));
+  check (option bool) "false" (Some false) (bool_value (v "false"));
+  check (option bool) "a number is not a bool" None (bool_value (v "1"));
+  check (option (Alcotest.float 1e-9)) "real" (Some 3.5) (float_value (v "3.5"));
+  (* An integer is a JSON number; "type": "number" accepts it. *)
+  check (option (Alcotest.float 1e-9)) "integer as number" (Some 3.) (float_value (v "3"));
+  check
+    (option (Alcotest.float 1e5))
+    "u64 as number"
+    (Some 1.8446744073709552e19)
+    (float_value (v "18446744073709551615"));
+  check (option (Alcotest.float 1e-9)) "a string is not a number" None (float_value (v {|"x"|}));
+  check bool "typ string" true (is_typ `Str {|"x"|});
+  check bool "typ number" true (is_typ `Num "1");
+  check bool "typ bool" true (is_typ `Bool "true");
+  check bool "typ null" true (is_typ `Null "null");
+  check bool "typ array" true (is_typ `Arr "[]");
+  check bool "typ object" true (is_typ `Obj "{}")
+;;
+
 let ordered_lookup () =
   let doc = of_string {|{"a":1,"b":2,"c":3,"d":4}|} in
   let root = value_of_doc doc in
@@ -471,6 +498,7 @@ let basic =
   ; test_case "embedded NUL" `Quick embedded_nul
   ; test_case "integer range" `Quick integers
   ; test_case "mutable doc" `Quick mutable_doc
+  ; test_case "scalar accessors" `Quick scalars
   ; test_case "ordered lookup" `Quick ordered_lookup
   ; test_case "array stepping" `Quick array_stepping
   ; rdtrip ~n:1 "3" int Alcotest.int

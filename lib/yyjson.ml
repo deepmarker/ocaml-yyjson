@@ -86,7 +86,7 @@ external get_subtype_unsafe
   = "ml_yyjson_get_subtype"
 [@@noalloc]
 
-external _get_bool : doc -> va -> bool = "ml_yyjson_get_bool" [@@noalloc]
+external get_bool_unsafe : doc -> va -> bool = "ml_yyjson_get_bool" [@@noalloc]
 
 (* [ml_yyjson_get_sint_int] is deliberately not bound: [Val_long] of an
    [int64] truncates to 63 bits, which is what used to make [view] report
@@ -100,6 +100,11 @@ let[@inline] get_type doc va =
 let[@inline] get_subtype doc va =
   check doc;
   get_subtype_unsafe doc va
+;;
+
+let[@inline] get_bool doc va =
+  check doc;
+  get_bool_unsafe doc va
 ;;
 
 (* alloc *)
@@ -130,9 +135,25 @@ let[@inline] get_string doc va =
   get_string_unsafe doc va
 ;;
 
+let typ { doc; va } = get_type doc va
+
 let string_value { doc; va } =
   match get_type doc va with
   | Str -> Some (get_string doc va)
+  | _ -> None
+;;
+
+let bool_value { doc; va } =
+  match get_type doc va with
+  | Bool -> Some (get_bool doc va)
+  | _ -> None
+;;
+
+(* Any JSON number, integer subtypes included: JSON Schema's "number"
+   accepts them, and [get_num] converts all three subtypes correctly. *)
+let float_value { doc; va } =
+  match get_type doc va with
+  | Num -> Some (get_num doc va)
   | _ -> None
 ;;
 
