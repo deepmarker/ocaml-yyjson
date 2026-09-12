@@ -4,24 +4,27 @@ include Common
 type doc
 type va [@@immediate]
 
+exception Unexpected_type of json_typ
+
 (* Always safe. *)
 external version : unit -> int = "ml_yyjson_version" [@@noalloc]
+
+external version_compiled : unit -> int = "ml_yyjson_version_compiled" [@@noalloc]
 external is_doc_null : doc -> bool = "ml_is_doc_null" [@@noalloc]
 external free_doc : doc -> unit = "ml_yyjson_doc_free" [@@noalloc]
 
-let with_check_doc0 f doc = if is_doc_null doc then raise Mutable.Doc_is_null else f doc
+(* These are bound as explicit [let[@inline]] wrappers rather than partial
+   applications of a [with_check_doc] combinator: a partial application
+   forces the external into a closure, so every accessor call becomes a
+   generic [caml_apply] plus two indirect calls and loses [@@noalloc]. *)
+let[@inline] check doc = if is_doc_null doc then raise Mutable.Doc_is_null
 
-let with_check_doc1 f doc va =
-  if is_doc_null doc then raise Mutable.Doc_is_null else f doc va
+external doc_get_root_unsafe : doc -> va = "ml_yyjson_doc_get_root"
+
+let[@inline] doc_get_root doc =
+  check doc;
+  doc_get_root_unsafe doc
 ;;
-
-let with_check_doc2 f doc v1 v2 =
-  if is_doc_null doc then raise Mutable.Doc_is_null else f doc v1 v2
-;;
-
-external doc_get_root : doc -> va = "ml_yyjson_doc_get_root"
-
-let doc_get_root = with_check_doc0 doc_get_root
 
 type version =
   { major : int
@@ -29,11 +32,12 @@ type version =
   ; patch : int
   }
 
-let version =
-  lazy
-    (let v = version () in
-     { major = v lsr 16; minor = (v lsr 8) land 0xff; patch = v land 0xff })
+let decode_version v =
+  { major = v lsr 16; minor = (v lsr 8) land 0xff; patch = v land 0xff }
 ;;
+
+let version = lazy (decode_version (version ()))
+let compiled_version = lazy (decode_version (version_compiled ()))
 
 type value =
   { doc : doc
@@ -43,8 +47,8 @@ type value =
 let value_of_doc doc = { doc; va = doc_get_root doc }
 let doc_of_value { doc; _ } = doc
 
-external arr_iter : doc -> va -> va array = "ml_yyjson_array_iter"
-external obj_iter : doc -> va -> (string * va) array = "ml_yyjson_obj_iter"
+external arr_iter_unsafe : doc -> va -> va array = "ml_yyjson_array_iter"
+external obj_iter_unsafe : doc -> va -> (string * va) array = "ml_yyjson_obj_iter"
 external obj_get_va : doc -> va -> string -> va option = "ml_yyjson_obj_get"
 
 external obj_get_string_va
@@ -54,8 +58,15 @@ external obj_get_string_va
   -> string option
   = "ml_yyjson_obj_get_string"
 
-let arr_iter = with_check_doc1 arr_iter
-let obj_iter = with_check_doc1 obj_iter
+let[@inline] arr_iter doc va =
+  check doc;
+  arr_iter_unsafe doc va
+;;
+
+let[@inline] obj_iter doc va =
+  check doc;
+  obj_iter_unsafe doc va
+;;
 
 let obj_get { doc; va } key =
   match obj_get_va doc va key with
@@ -66,23 +77,58 @@ let obj_get { doc; va } key =
 let obj_get_string { doc; va } key = obj_get_string_va doc va key
 
 (* no alloc*)
-external get_type : doc -> va -> json_typ = "ml_yyjson_get_type" [@@noalloc]
-external get_subtype : doc -> va -> json_subtyp = "ml_yyjson_get_subtype" [@@noalloc]
-external _get_bool : doc -> va -> bool = "ml_yyjson_get_bool" [@@noalloc]
-external get_int : doc -> va -> int = "ml_yyjson_get_sint_int" [@@noalloc]
+external get_type_unsafe : doc -> va -> json_typ = "ml_yyjson_get_type" [@@noalloc]
 
-let get_type = with_check_doc1 get_type
-let get_subtype = with_check_doc1 get_subtype
-let get_int = with_check_doc1 get_int
+external get_subtype_unsafe
+  :  doc
+  -> va
+  -> json_subtyp
+  = "ml_yyjson_get_subtype"
+[@@noalloc]
+
+external _get_bool : doc -> va -> bool = "ml_yyjson_get_bool" [@@noalloc]
+
+(* [ml_yyjson_get_sint_int] is deliberately not bound: [Val_long] of an
+   [int64] truncates to 63 bits, which is what used to make [view] report
+   Int64.max_int as -1. Read integers through [get_int64]/[get_uint64]. *)
+
+let[@inline] get_type doc va =
+  check doc;
+  get_type_unsafe doc va
+;;
+
+let[@inline] get_subtype doc va =
+  check doc;
+  get_subtype_unsafe doc va
+;;
 
 (* alloc *)
-external get_int64 : doc -> va -> int64 = "ml_yyjson_get_sint"
-external get_float : doc -> va -> float = "ml_yyjson_get_real"
-external get_string : doc -> va -> string = "ml_yyjson_get_str"
+external get_int64_unsafe : doc -> va -> int64 = "ml_yyjson_get_sint"
+external get_uint64_unsafe : doc -> va -> int64 = "ml_yyjson_get_uint"
+external _get_real : doc -> va -> float = "ml_yyjson_get_real"
+external get_num_unsafe : doc -> va -> float = "ml_yyjson_get_num"
+external get_string_unsafe : doc -> va -> string = "ml_yyjson_get_str"
 
-let get_int64 = with_check_doc1 get_int64
-let get_float = with_check_doc1 get_float
-let get_string = with_check_doc1 get_string
+let[@inline] get_int64 doc va =
+  check doc;
+  get_int64_unsafe doc va
+;;
+
+let[@inline] get_uint64 doc va =
+  check doc;
+  get_uint64_unsafe doc va
+;;
+
+(* Correct for sint, uint and real alike, including u64 > INT64_MAX. *)
+let[@inline] get_num doc va =
+  check doc;
+  get_num_unsafe doc va
+;;
+
+let[@inline] get_string doc va =
+  check doc;
+  get_string_unsafe doc va
+;;
 
 let string_value { doc; va } =
   match get_type doc va with
@@ -90,10 +136,32 @@ let string_value { doc; va } =
   | _ -> None
 ;;
 
+(* yyjson stores every non-negative integer with subtype UINT, so a UINT
+   only overflows [int64] once its high bit is set; [yyjson_get_sint] would
+   silently return it as a negative number. *)
 let int64_value { doc; va } =
-  match get_type doc va, get_subtype doc va with
-  | Num, Real -> None
-  | Num, _ -> Some (get_int64 doc va)
+  match get_type doc va with
+  | Num ->
+    (match get_subtype doc va with
+     | Real -> None
+     | TrueSintNoesc -> Some (get_int64 doc va)
+     | NoneFalseUint ->
+       let i = get_uint64 doc va in
+       if Int64.compare i 0L < 0 then None else Some i)
+  | _ -> None
+;;
+
+(* The bit pattern of an unsigned 64-bit JSON integer. Values above
+   [Int64.max_int] come back negative and must be read as unsigned. *)
+let uint64_value { doc; va } =
+  match get_type doc va with
+  | Num ->
+    (match get_subtype doc va with
+     | Real -> None
+     | NoneFalseUint -> Some (get_uint64 doc va)
+     | TrueSintNoesc ->
+       let i = get_int64 doc va in
+       if Int64.compare i 0L < 0 then None else Some i)
   | _ -> None
 ;;
 
@@ -107,19 +175,17 @@ let array_values { doc; va } =
    are never GCed before doc in OCaml too. *)
 let view { doc; va } =
   match get_type doc va with
-  | ErrInvalid -> assert false
-  | Raw -> assert false
+  | (ErrInvalid | Raw) as typ -> raise (Unexpected_type typ)
   | Null -> `Null
   | Bool ->
     `Bool
       (match get_subtype doc va with
        | NoneFalseUint -> false
        | _ -> true)
-  | Num ->
-    (match get_subtype doc va, Sys.word_size with
-     | Real, _ -> `Float (get_float doc va)
-     | _, 64 -> `Float (get_int doc va |> Int.to_float)
-     | _ -> `Float (get_int64 doc va |> Int64.to_float))
+  (* A [Json_repr] view can only carry a float, so integers above 2^53 lose
+     precision here by construction: use [int64_value] when they matter.
+     [get_num] at least keeps the value and its sign correct. *)
+  | Num -> `Float (get_num doc va)
   | Str -> `String (get_string doc va)
   | Arr ->
     let a = arr_iter doc va in
@@ -153,15 +219,23 @@ let of_string ?(flags = []) ?(pos = 0) ?len src =
   read_opts_string src pos len (ReadFlag.to_int flags)
 ;;
 
-external write_opts : doc -> int -> string = "ml_yyjson_write_opts"
-external write_opts_val : doc -> va -> int -> string = "ml_yyjson_val_write_opts"
-external write_file : doc -> string -> int -> unit = "ml_yyjson_write_file"
+external write_opts_unsafe : doc -> int -> string = "ml_yyjson_write_opts"
+external write_opts_val_unsafe : doc -> va -> int -> string = "ml_yyjson_val_write_opts"
+external write_file_unsafe : doc -> string -> int -> unit = "ml_yyjson_write_file"
 
-let write_opts = with_check_doc1 write_opts
-let write_file = with_check_doc2 write_file
-let write_opts_val = with_check_doc2 write_opts_val
-let to_file ?(flags = []) path doc = write_file path doc (WriteFlag.to_int flags)
-let to_string ?(flags = []) doc = write_opts doc (WriteFlag.to_int flags)
-let to_string_val ?(flags = []) doc va = write_opts_val doc va (WriteFlag.to_int flags)
+let to_file ?(flags = []) doc path =
+  check doc;
+  write_file_unsafe doc path (WriteFlag.to_int flags)
+;;
+
+let to_string ?(flags = []) doc =
+  check doc;
+  write_opts_unsafe doc (WriteFlag.to_int flags)
+;;
+
+let to_string_val ?(flags = []) doc va =
+  check doc;
+  write_opts_val_unsafe doc va (WriteFlag.to_int flags)
+;;
 
 module Mutable = Mutable

@@ -3,13 +3,15 @@ open Sexplib.Std
 open Yyjson
 open Alcotest
 
-let ver = [| 0; 12; 0 |]
-
+(* Pin the header against the linked library rather than against a literal:
+   a skew between the two shifts flag values and struct layouts, and a
+   literal only breaks on every upgrade. *)
 let version () =
-  let x = Lazy.force version in
-  check int "major" ver.(0) x.major;
-  check int "minor" ver.(1) x.minor;
-  check int "patch" ver.(2) x.patch
+  let compiled = Lazy.force compiled_version in
+  let linked = Lazy.force version in
+  check int "major" compiled.major linked.major;
+  check int "minor" compiled.minor linked.minor;
+  check int "patch" compiled.patch linked.patch
 ;;
 
 let object_lookup () =
@@ -306,10 +308,123 @@ let equal_int64 ints =
       check int64 i_str (Int64.of_string i_str) i'))
 ;;
 
+(* Regression tests for the findings in doc/yyjson-audit.md (2026-09-12).
+   Each of these failed before that audit's fixes. *)
+
+let read_flags () =
+  let parses ?(flags = []) str =
+    match of_string ~flags str with
+    | _ -> true
+    | exception Failure _ -> false
+  in
+  check bool "inf rejected by default" false (parses "1e999");
+  check
+    bool
+    "Allow_inf_and_nan enables inf"
+    true
+    (parses ~flags:[ ReadFlag.Allow_inf_and_nan ] "1e999");
+  check bool "comment rejected by default" false (parses "[1] //c");
+  check
+    bool
+    "Allow_comments enables comments"
+    true
+    (parses ~flags:[ ReadFlag.Allow_comments ] "[1] //c");
+  check
+    bool
+    "Allow_trailing_commas"
+    true
+    (parses ~flags:[ ReadFlag.Allow_trailing_commas ] "[1,]");
+  check bool "Allow_bom" true (parses ~flags:[ ReadFlag.Allow_bom ] "\xef\xbb\xbf[1]")
+;;
+
+let raw_view () =
+  let doc = of_string ~flags:[ ReadFlag.Number_as_raw ] "123" in
+  check_raises "Raw is reported, not asserted" (Unexpected_type Raw) (fun () ->
+    ignore (view (value_of_doc doc)))
+;;
+
+let embedded_nul () =
+  let doc = of_string "{\"k\":\"a\\u0000b\"}" in
+  let root = value_of_doc doc in
+  let member = Option.value_exn (obj_get root "k") in
+  check (option string) "obj_get_string" (Some "a\000b") (obj_get_string root "k");
+  check (option string) "string_value" (Some "a\000b") (string_value member);
+  (match view member with
+   | `String s -> check string "view value" "a\000b" s
+   | _ -> fail "expected a string");
+  let kdoc = of_string "{\"a\\u0000b\":1}" in
+  match view (value_of_doc kdoc) with
+  | `O [ (k, _) ] -> check string "view key" "a\000b" k
+  | _ -> fail "expected an object"
+;;
+
+let integers () =
+  let v s = value_of_doc (of_string s) in
+  let as_float s =
+    match view (v s) with
+    | `Float f -> f
+    | _ -> Float.nan
+  in
+  check
+    (option int64)
+    "2^53+1 exactly"
+    (Some 9007199254740993L)
+    (int64_value (v "9007199254740993"));
+  check
+    (option int64)
+    "int64 max"
+    (Some Int64.max_value)
+    (int64_value (v "9223372036854775807"));
+  check
+    (option int64)
+    "int64 min"
+    (Some Int64.min_value)
+    (int64_value (v "-9223372036854775808"));
+  check
+    (option int64)
+    "u64 above int64 max is rejected"
+    None
+    (int64_value (v "18446744073709551615"));
+  check
+    (option int64)
+    "u64 bit pattern"
+    (Some (-1L))
+    (uint64_value (v "18446744073709551615"));
+  check (option int64) "negative is not unsigned" None (uint64_value (v "-1"));
+  check (option int64) "real is not an integer" None (int64_value (v "3.5"));
+  (* These used to come back as -1. and -4.6e18. *)
+  check (float 1e4) "int64 max view" 9.2233720368547758e18 (as_float "9223372036854775807");
+  check
+    (float 1e4)
+    "u64 view keeps magnitude"
+    1.8446744073709552e19
+    (as_float "18446744073709551615");
+  check (float 1e3) "2^62 view" 4.6116860184273879e18 (as_float "4611686018427387905")
+;;
+
+let mutable_doc () =
+  let d = Yyjson.Mutable.create () in
+  let n = Yyjson.Mutable.sint d 42 in
+  check_raises
+    "get_string on a number raises instead of segfaulting"
+    (Failure "Yyjson.Mutable.get_string: value is not a string")
+    (fun () -> ignore (Yyjson.Mutable.get_string d n));
+  let s = Yyjson.Mutable.string d "a\000b" in
+  check string "mutable string keeps NUL" "a\000b" (Yyjson.Mutable.get_string d s);
+  Yyjson.Mutable.free d;
+  check_raises "use after free" Yyjson.Mutable.Doc_is_null (fun () ->
+    ignore (Yyjson.Mutable.get_string d s))
+;;
+
 let basic =
   let open Json_encoding in
   [ test_case "version" `Quick version
   ; test_case "direct object lookup" `Quick object_lookup
+  ; test_case "read flag mapping" `Quick read_flags
+  ; test_case "raw view" `Quick raw_view
+  ; test_case "embedded NUL" `Quick embedded_nul
+  ; test_case "integer range" `Quick integers
+  ; test_case "mutable doc" `Quick mutable_doc
   ; rdtrip ~n:1 "3" int Alcotest.int
   ; rdtrip "true" bool Alcotest.bool
   ; rdtrip "false" bool Alcotest.bool

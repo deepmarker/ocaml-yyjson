@@ -5,31 +5,31 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github deepmarker/ocaml-yyjson))
 
-(authors "Author Name")
+(authors "Vincent Bernardoff <vbmithr@gmail.com>")
 
-(maintainers "Maintainer Name")
+(maintainers "Vincent Bernardoff <vbmithr@gmail.com>")
 
-(license LICENSE)
+(license ISC)
 
-(documentation https://url/to/documentation)
+(documentation https://github.com/deepmarker/ocaml-yyjson)
 
 (package
  (name yyjson)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "OCaml bindings to the yyjson C JSON parser")
+ (description
+  "Bindings to yyjson, a fast C JSON parser. Values are unboxed pointers into the parsed document, so reading fields allocates nothing beyond what is extracted. Provides direct accessors for reading individual members, exact 64-bit integer accessors, and a generic Json_repr-compatible view for json-data-encoding interop. Requires yyjson >= 0.13.0 as a system library.")
  (depends
-   ocaml
-   dune
-   bigstringaf
+  ocaml
+  dune
+  bigstringaf
   (alcotest :with-test)
   (base :with-test)
+  (sexplib :with-test)
+  (json-data-encoding :with-test)
   (ppx_sexp_conv :with-test)
   (ppx_compare :with-test)
-  (ezjsonm :with-test)
- )
+  (ezjsonm :with-test))
  (tags
-  (topics "to describe" your project)))
-
-; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+  ("json" "yyjson" "parser" "bindings")))

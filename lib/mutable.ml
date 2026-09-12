@@ -9,80 +9,191 @@ exception Doc_is_null
 external free : doc -> unit = "ml_yyjson_mut_doc_free" [@@noalloc]
 external is_doc_null : doc -> bool = "ml_is_mutdoc_null" [@@noalloc]
 
-let with_check_doc0 f doc = if is_doc_null doc then raise Doc_is_null else f doc
-let with_check_doc1 f doc va = if is_doc_null doc then raise Doc_is_null else f doc va
-
-let with_check_doc2 f doc v1 v2 =
-  if is_doc_null doc then raise Doc_is_null else f doc v1 v2
-;;
+(* Explicit inlinable wrappers rather than partial applications of a
+   combinator, which would force each external into a closure. *)
+let[@inline] check doc = if is_doc_null doc then raise Doc_is_null
 
 external create : unit -> doc = "ml_yyjson_mut_doc_new"
-external doc_set_root : doc -> va -> unit = "ml_yyjson_mut_doc_set_root" [@@noalloc]
 
-let doc_set_root = with_check_doc1 doc_set_root
+external doc_set_root_unsafe
+  :  doc
+  -> va
+  -> unit
+  = "ml_yyjson_mut_doc_set_root"
+[@@noalloc]
+
+let[@inline] doc_set_root doc va =
+  check doc;
+  doc_set_root_unsafe doc va
+;;
 
 (* atom functions functions *)
-external null : doc -> va = "ml_yyjson_mut_null" [@@noalloc]
-external bool : doc -> bool -> va = "ml_yyjson_mut_bool" [@@noalloc]
+external null_unsafe : doc -> va = "ml_yyjson_mut_null" [@@noalloc]
+external bool_unsafe : doc -> bool -> va = "ml_yyjson_mut_bool" [@@noalloc]
 external _uint : doc -> int -> va = "ml_yyjson_mut_uint" [@@noalloc]
-external sint : doc -> int -> va = "ml_yyjson_mut_sint" [@@noalloc]
-external float : doc -> float -> va = "ml_yyjson_mut_real" [@@noalloc]
-external string : doc -> string -> va = "ml_yyjson_mut_strcpy" [@@noalloc]
+external sint_unsafe : doc -> int -> va = "ml_yyjson_mut_sint" [@@noalloc]
+external float_unsafe : doc -> float -> va = "ml_yyjson_mut_real" [@@noalloc]
+external string_unsafe : doc -> string -> va = "ml_yyjson_mut_strcpy" [@@noalloc]
 
-let null = with_check_doc0 null
-let bool = with_check_doc1 bool
-let sint = with_check_doc1 sint
-let float = with_check_doc1 float
-let string = with_check_doc1 string
+let[@inline] null doc =
+  check doc;
+  null_unsafe doc
+;;
+
+let[@inline] bool doc b =
+  check doc;
+  bool_unsafe doc b
+;;
+
+let[@inline] sint doc i =
+  check doc;
+  sint_unsafe doc i
+;;
+
+let[@inline] float doc f =
+  check doc;
+  float_unsafe doc f
+;;
+
+let[@inline] string doc s =
+  check doc;
+  string_unsafe doc s
+;;
 
 (* object functions *)
-external create_obj : doc -> va = "ml_yyjson_mut_obj"
-external obj_add : doc -> va -> va -> va -> bool = "ml_yyjson_mut_obj_add" [@@noalloc]
+external create_obj_unsafe : doc -> va = "ml_yyjson_mut_obj"
 
-let create_obj = with_check_doc0 create_obj
-let obj_add = with_check_doc2 obj_add
+external obj_add_unsafe
+  :  doc
+  -> va
+  -> va
+  -> va
+  -> bool
+  = "ml_yyjson_mut_obj_add"
+[@@noalloc]
+
+let[@inline] create_obj doc =
+  check doc;
+  create_obj_unsafe doc
+;;
+
+let[@inline] obj_add doc obj k v =
+  check doc;
+  obj_add_unsafe doc obj k v
+;;
 
 (* array functions *)
-external create_arr : doc -> va = "ml_yyjson_mut_arr"
-external arr_add : doc -> va -> va -> bool = "ml_yyjson_mut_arr_add_val" [@@noalloc]
+external create_arr_unsafe : doc -> va = "ml_yyjson_mut_arr"
 
-let create_arr = with_check_doc0 create_arr
-let arr_add = with_check_doc2 arr_add
+external arr_add_unsafe
+  :  doc
+  -> va
+  -> va
+  -> bool
+  = "ml_yyjson_mut_arr_add_val"
+[@@noalloc]
+
+let[@inline] create_arr doc =
+  check doc;
+  create_arr_unsafe doc
+;;
+
+let[@inline] arr_add doc arr v =
+  check doc;
+  arr_add_unsafe doc arr v
+;;
 
 (* get functions (noalloc) *)
-external get_type : doc -> va -> json_typ = "ml_yyjson_mut_get_type" [@@noalloc]
-external get_subtype : doc -> va -> json_subtyp = "ml_yyjson_mut_get_subtype" [@@noalloc]
-external _get_bool : doc -> va -> bool = "ml_yyjson_mut_get_bool" [@@noalloc]
-external get_int : doc -> va -> int = "ml_yyjson_mut_get_int" [@@noalloc]
+external get_type_unsafe : doc -> va -> json_typ = "ml_yyjson_mut_get_type" [@@noalloc]
 
-let get_type = with_check_doc1 get_type
-let get_subtype = with_check_doc1 get_subtype
-let get_int = with_check_doc1 get_int
+external get_subtype_unsafe
+  :  doc
+  -> va
+  -> json_subtyp
+  = "ml_yyjson_mut_get_subtype"
+[@@noalloc]
+
+external _get_bool : doc -> va -> bool = "ml_yyjson_mut_get_bool" [@@noalloc]
+external get_int_unsafe : doc -> va -> int = "ml_yyjson_mut_get_int" [@@noalloc]
+
+let[@inline] get_type doc va =
+  check doc;
+  get_type_unsafe doc va
+;;
+
+let[@inline] get_subtype doc va =
+  check doc;
+  get_subtype_unsafe doc va
+;;
+
+let[@inline] get_int doc va =
+  check doc;
+  get_int_unsafe doc va
+;;
 
 (* get functions (alloc) *)
-external get_sint : doc -> va -> int64 = "ml_yyjson_mut_get_sint"
-external get_float : doc -> va -> float = "ml_yyjson_mut_get_real"
-external get_string : doc -> va -> string = "ml_yyjson_mut_get_str"
+external get_sint_unsafe : doc -> va -> int64 = "ml_yyjson_mut_get_sint"
+external get_float_unsafe : doc -> va -> float = "ml_yyjson_mut_get_real"
+external get_string_unsafe : doc -> va -> string = "ml_yyjson_mut_get_str"
 
-let get_sint = with_check_doc1 get_sint
-let get_float = with_check_doc1 get_float
-let get_string = with_check_doc1 get_string
+let[@inline] get_sint doc va =
+  check doc;
+  get_sint_unsafe doc va
+;;
+
+let[@inline] get_float doc va =
+  check doc;
+  get_float_unsafe doc va
+;;
+
+(* Raises [Failure] if the value is not a string. *)
+let[@inline] get_string doc va =
+  check doc;
+  get_string_unsafe doc va
+;;
 
 (* iterators *)
-external arr_iter : doc -> va -> va array = "ml_yyjson_mut_array_iter"
-external obj_iter : doc -> va -> (string * va) array = "ml_yyjson_mut_obj_iter"
+external arr_iter_unsafe : doc -> va -> va array = "ml_yyjson_mut_array_iter"
 
-let arr_iter = with_check_doc1 arr_iter
-let obj_iter = with_check_doc1 obj_iter
+external obj_iter_unsafe
+  :  doc
+  -> va
+  -> (string * va) array
+  = "ml_yyjson_mut_obj_iter"
+
+let[@inline] arr_iter doc va =
+  check doc;
+  arr_iter_unsafe doc va
+;;
+
+let[@inline] obj_iter doc va =
+  check doc;
+  obj_iter_unsafe doc va
+;;
 
 (* write functions *)
-external write_opts : doc -> int -> string = "ml_yyjson_mut_write_opts"
-external write_val_opts : doc -> va -> int -> string = "ml_yyjson_mut_val_write_opts"
-external write_file : doc -> string -> int -> unit = "ml_yyjson_mut_write_file"
+external write_opts_unsafe : doc -> int -> string = "ml_yyjson_mut_write_opts"
 
-let write_opts = with_check_doc1 write_opts
-let write_val_opts = with_check_doc1 write_val_opts
-let write_file = with_check_doc2 write_file
-let to_file ?(flags = []) doc path = write_file doc path (WriteFlag.to_int flags)
-let to_string ?(flags = []) doc = write_opts doc (WriteFlag.to_int flags)
-let to_string_val ?(flags = []) doc va = write_val_opts doc va (WriteFlag.to_int flags)
+external write_val_opts_unsafe
+  :  doc
+  -> va
+  -> int
+  -> string
+  = "ml_yyjson_mut_val_write_opts"
+
+external write_file_unsafe : doc -> string -> int -> unit = "ml_yyjson_mut_write_file"
+
+let to_file ?(flags = []) doc path =
+  check doc;
+  write_file_unsafe doc path (WriteFlag.to_int flags)
+;;
+
+let to_string ?(flags = []) doc =
+  check doc;
+  write_opts_unsafe doc (WriteFlag.to_int flags)
+;;
+
+let to_string_val ?(flags = []) doc va =
+  check doc;
+  write_val_opts_unsafe doc va (WriteFlag.to_int flags)
+;;

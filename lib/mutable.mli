@@ -10,7 +10,10 @@ type va
     already. *)
 exception Doc_is_null
 
+(** [create ()] is a new mutable document. Its arena is reclaimed when the
+    document is collected, or eagerly by [free]. *)
 val create : unit -> doc
+
 val free : doc -> unit
 val doc_set_root : doc -> va -> unit
 
@@ -42,6 +45,8 @@ val get_subtype : doc -> va -> json_subtyp
 val get_int : doc -> va -> int
 val get_sint : doc -> va -> int64
 val get_float : doc -> va -> float
+
+(** @raise Failure if the value is not a string. *)
 val get_string : doc -> va -> string
 
 (** Iter functions *)
