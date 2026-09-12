@@ -489,6 +489,32 @@ let array_stepping () =
   check (option int) "not an array" None (arr_length (v {|{"x":1}|}))
 ;;
 
+let object_stepping () =
+  let v s = value_of_doc (of_string s) in
+  let keys o = Option.map (obj_fold o ~init:[] ~f:(fun acc k _ -> k :: acc)) ~f:List.rev in
+  let o = v {|{"a":1,"b":2,"c":3}|} in
+  check (option int) "length" (Some 3) (obj_length o);
+  check (option (list string)) "names in document order" (Some [ "a"; "b"; "c" ]) (keys o);
+  check
+    (option int64)
+    "values"
+    (Some 6L)
+    (obj_fold o ~init:0L ~f:(fun acc _ x ->
+       Int64.( + ) acc (Option.value_exn (int64_value x))));
+  check (option int) "empty object" (Some 0) (obj_length (v "{}"));
+  check (option int) "not an object" None (obj_length (v "[]"));
+  (* The step must skip a nested container, not descend into it. *)
+  let nested = v {|{"a":{"x":1,"y":2},"b":[1,2,3],"c":9}|} in
+  check
+    (option (list string))
+    "steps over nested containers"
+    (Some [ "a"; "b"; "c" ])
+    (keys nested);
+  (* Keys are length-correct, like every other string the binding returns. *)
+  let nul = v "{\"a\\u0000b\":1}" in
+  check (option (list string)) "NUL in a key" (Some [ "a\000b" ]) (keys nul)
+;;
+
 let basic =
   let open Json_encoding in
   [ test_case "version" `Quick version
@@ -501,6 +527,7 @@ let basic =
   ; test_case "scalar accessors" `Quick scalars
   ; test_case "ordered lookup" `Quick ordered_lookup
   ; test_case "array stepping" `Quick array_stepping
+  ; test_case "object stepping" `Quick object_stepping
   ; rdtrip ~n:1 "3" int Alcotest.int
   ; rdtrip "true" bool Alcotest.bool
   ; rdtrip "false" bool Alcotest.bool

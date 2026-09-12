@@ -240,6 +240,36 @@ let arr_fold { doc; va } ~init ~f =
   | _ -> None
 ;;
 
+external obj_size_unsafe : doc -> va -> int = "ml_yyjson_obj_size" [@@noalloc]
+external obj_first_key_unsafe : doc -> va -> va = "ml_yyjson_obj_first_key" [@@noalloc]
+external obj_key_value_unsafe : doc -> va -> va = "ml_yyjson_obj_key_value" [@@noalloc]
+external obj_next_key_unsafe : doc -> va -> va = "ml_yyjson_obj_next_key" [@@noalloc]
+
+let obj_length { doc; va } =
+  match get_type doc va with
+  | Obj -> Some (obj_size_unsafe doc va)
+  | _ -> None
+;;
+
+(* For members whose names are not known ahead of time; when they are,
+   [obj_cursor] is cheaper. Keys are read with [get_string], so they are
+   length-correct and keep an embedded NUL like any other string here. *)
+let obj_fold { doc; va } ~init ~f =
+  match get_type doc va with
+  | Obj ->
+    let n = obj_size_unsafe doc va in
+    let rec go acc i key =
+      if i >= n
+      then acc
+      else (
+        let name = get_string doc key in
+        let value = { doc; va = obj_key_value_unsafe doc key } in
+        go (f acc name value) (i + 1) (obj_next_key_unsafe doc key))
+    in
+    Some (go init 0 (obj_first_key_unsafe doc va))
+  | _ -> None
+;;
+
 (* values created here have the same lifetime as doc. Make sure they
    are never GCed before doc in OCaml too. *)
 let view { doc; va } =

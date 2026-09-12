@@ -432,6 +432,26 @@ CAMLprim value ml_yyjson_arr_next(value doc, value v) {
     return Val_ptr(unsafe_yyjson_get_next(Ptr_val(v)));
 }
 
+/* Object stepping, for members whose names are not known ahead of time.
+   An object is stored as alternating key and value slots: the value sits
+   immediately after its key, and the next key is one step past that
+   value -- a step that follows the container offset, so a nested object
+   or array is skipped rather than descended into. */
+
+CAMLprim value ml_yyjson_obj_size(value doc, value v) {
+    return Val_long(yyjson_obj_size(Ptr_val(v)));
+}
+CAMLprim value ml_yyjson_obj_first_key(value doc, value v) {
+    if (yyjson_obj_size(Ptr_val(v)) == 0) return Val_ptr(NULL);
+    return Val_ptr(unsafe_yyjson_get_first(Ptr_val(v)));
+}
+CAMLprim value ml_yyjson_obj_key_value(value doc, value key) {
+    return Val_ptr((yyjson_val *) Ptr_val(key) + 1);
+}
+CAMLprim value ml_yyjson_obj_next_key(value doc, value key) {
+    return Val_ptr(unsafe_yyjson_get_next((yyjson_val *) Ptr_val(key) + 1));
+}
+
 CAMLprim value ml_yyjson_obj_get_string(value doc, value obj, value key) {
     CAMLparam3(doc, obj, key);
     CAMLlocal2(some, string);

@@ -118,6 +118,19 @@ val arr_length : value -> int option
     array [array_values] returns. [None] if [value] is not an array. *)
 val arr_fold : value -> init:'a -> f:('a -> value -> 'a) -> 'a option
 
+(** [obj_length value] is the number of members, or [None] if [value] is
+    not an object. *)
+val obj_length : value -> int option
+
+(** [obj_fold value ~init ~f] folds over the members in document order,
+    passing each name and value to [f]. [None] if [value] is not an
+    object.
+
+    This is for objects used as maps, whose keys are not known ahead of
+    time. When the names {e are} known, {!obj_cursor} is cheaper: it neither
+    copies a key nor visits a member you did not ask for. *)
+val obj_fold : value -> init:'a -> f:('a -> string -> value -> 'a) -> 'a option
+
 val of_file : ?flags:ReadFlag.t list -> string -> doc
 val of_bigstring : ?flags:ReadFlag.t list -> ?pos:int -> ?len:int -> Bigstringaf.t -> doc
 val of_string : ?flags:ReadFlag.t list -> ?pos:int -> ?len:int -> string -> doc
