@@ -43,8 +43,10 @@ float. `int64_value` returns `None` for an unsigned value above
 data sends prices, `"62817.99"` — as an exact `(mantissa, exponent)` pair,
 `(6281799L, -2)`, parsing the bytes where yyjson holds them rather than copying
 the string out first. It accepts an optional sign, digits with at most one
-point and at most 18 digits in all; anything else, including exponent notation,
-is `None`. Nothing goes through a float.
+point and at most 17 digits in all; anything else, including exponent notation,
+is `None`. Nothing goes through a float, and nothing is allocated but the
+result: the stub returns mantissa and exponent packed into one tagged int,
+which is what caps the length at 17 digits.
 
 ### Reading many fields, or long arrays
 
@@ -64,6 +66,12 @@ let event_time = Yyjson.cursor_get cursor "E" in
 that `array_values` returns, and `arr_length` sizes a result up front. Both
 step by container offset, so they stay O(1) per element on arrays of arrays,
 where indexed access degrades to a linear search.
+
+`arr_cursor` steps the same way but one element at a time, checking the array
+once when it is made. It is the right tool for a short positional array, such
+as a `["price","quantity"]` level. `arr_get` indexes instead, re-checking the
+array on every access; a decoder that read each position that way was 15%
+slower on a 40-level book.
 
 ```ocaml
 (* [None] if [levels] is not an array. *)

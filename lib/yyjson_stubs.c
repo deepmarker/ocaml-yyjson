@@ -431,6 +431,12 @@ CAMLprim value ml_yyjson_arr_first(value doc, value v) {
 CAMLprim value ml_yyjson_arr_next(value doc, value v) {
     return Val_ptr(unsafe_yyjson_get_next(Ptr_val(v)));
 }
+/* Indexed access. The caller has checked the bounds, so this never returns
+   NULL. Constant time on a flat array; the linear search noted above only
+   happens when the array holds containers. */
+CAMLprim value ml_yyjson_arr_get(value doc, value v, value i) {
+    return Val_ptr(yyjson_arr_get(Ptr_val(v), Long_val(i)));
+}
 
 /* Object stepping, for members whose names are not known ahead of time.
    An object is stored as alternating key and value slots: the value sits

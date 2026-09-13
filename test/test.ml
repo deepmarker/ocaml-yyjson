@@ -486,7 +486,44 @@ let array_stepping () =
     "steps over nested containers"
     (Some [ 3; 1; 2 ])
     (arr_fold nested ~init:[] ~f:(fun acc x -> Option.value_exn (arr_length x) :: acc));
-  check (option int) "not an array" None (arr_length (v {|{"x":1}|}))
+  check (option int) "not an array" None (arr_length (v {|{"x":1}|}));
+  let cursor = Option.value_exn (arr_cursor flat) in
+  check int "cursor starts with every element" 3 (arr_remaining cursor);
+  let next c = Option.bind (arr_cursor_next c) ~f:int64_value in
+  check (option int64) "cursor first" (Some 10L) (next cursor);
+  check (option int64) "cursor second" (Some 20L) (next cursor);
+  check int "cursor counts down" 1 (arr_remaining cursor);
+  check (option int64) "cursor last" (Some 30L) (next cursor);
+  check (option int64) "cursor exhausted" None (next cursor);
+  (* Asking again must not step past the end. *)
+  check (option int64) "cursor stays exhausted" None (next cursor);
+  check int "exhausted cursor has none left" 0 (arr_remaining cursor);
+  let empty_cursor = Option.value_exn (arr_cursor empty) in
+  check int "empty cursor" 0 (arr_remaining empty_cursor);
+  check (option int64) "empty cursor yields nothing" None (next empty_cursor);
+  let nested_cursor = Option.value_exn (arr_cursor nested) in
+  (* Stepped one [let] at a time: [List.init] calls its function from the
+     last index down, which would read the elements in reverse. *)
+  let length () = Option.bind (arr_cursor_next nested_cursor) ~f:arr_length in
+  let first = length () in
+  let second = length () in
+  let third = length () in
+  check
+    (list (option int))
+    "cursor steps over nested containers"
+    [ Some 2; Some 1; Some 3 ]
+    [ first; second; third ];
+  check (option int64) "get" (Some 20L) (Option.bind (arr_get flat 1) ~f:int64_value);
+  check bool "get past the end" true (Option.is_none (arr_get flat 3));
+  check bool "get before the start" true (Option.is_none (arr_get flat (-1)));
+  check bool "get on an empty array" true (Option.is_none (arr_get empty 0));
+  check
+    (option int)
+    "get past nested containers"
+    (Some 3)
+    (Option.bind (arr_get nested 2) ~f:arr_length);
+  check bool "get on a non-array" true (Option.is_none (arr_get (v {|{"x":1}|}) 0));
+  check bool "cursor on a non-array" true (Option.is_none (arr_cursor (v {|{"x":1}|})))
 ;;
 
 let object_stepping () =

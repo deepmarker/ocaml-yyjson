@@ -67,10 +67,14 @@ val typ : value -> json_typ
 val string_value : value -> string option
 
 (** [decimal_value value] reads a JSON string holding a plain decimal — an
-    optional sign, digits with at most one point, one to eighteen digits in
+    optional sign, digits with at most one point, one to seventeen digits in
     all, no exponent — as its (mantissa, exponent), straight off the document
     without copying the string. [None] if [value] is not a string or not such
-    a decimal. ["62817.99"] is [Some (6281799L, -2)]. *)
+    a decimal. ["62817.99"] is [Some (6281799L, -2)].
+
+    Seventeen digits, not the eighteen an int64 mantissa could hold, is what
+    lets the result come back without allocating a return channel; a caller
+    that must accept longer decimals parses {!string_value} instead. *)
 val decimal_value : value -> (int64 * int) option
 
 (** [bool_value value] is the boolean, or [None] if [value] is not one. *)
@@ -124,6 +128,30 @@ val arr_length : value -> int option
     stepping the document in place rather than building the intermediate
     array [array_values] returns. [None] if [value] is not an array. *)
 val arr_fold : value -> init:'a -> f:('a -> value -> 'a) -> 'a option
+
+(** [arr_get value i] is element [i], or [None] if [value] is not an array
+    or [i] is out of range. Constant time on an array of scalars; on one
+    holding arrays or objects it walks from the start. Each call re-checks
+    the array, so to read several elements in order use {!arr_cursor}. *)
+val arr_get : value -> int -> value option
+
+(** A cursor over an array's elements, for reading them in order without
+    re-checking the array at each step — the cheap way to read a short
+    positional array such as a [[price, quantity]] level. It steps by
+    container offset, so each step is O(1) even on arrays of arrays. Like
+    {!obj_cursor}, it borrows from its document and must not outlive it. *)
+type arr_cursor
+
+(** [arr_cursor value] is a cursor at the first element, or [None] if
+    [value] is not an array. *)
+val arr_cursor : value -> arr_cursor option
+
+(** [arr_remaining cursor] is the number of elements not yet returned. *)
+val arr_remaining : arr_cursor -> int
+
+(** [arr_cursor_next cursor] is the next element and advances past it, or
+    [None] once every element has been returned. *)
+val arr_cursor_next : arr_cursor -> value option
 
 (** [obj_length value] is the number of members, or [None] if [value] is
     not an object. *)

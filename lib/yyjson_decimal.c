@@ -7,23 +7,29 @@
    where yyjson already holds them.
 
    The grammar is deliberately narrow: an optional sign, digits with at most
-   one point, between one and eighteen digits in all, and nothing else -- no
-   exponent, no whitespace. Eighteen digits keeps the mantissa below 2^62, so
-   it comes back as a tagged OCaml int with nothing allocated. A value that is
-   not a string, or not such a decimal, returns Max_long, which no mantissa can
-   equal. The exponent is written into the int ref passed in; storing an
-   immediate there needs no write barrier, so the stub is noalloc.
+   one point, between one and seventeen digits in all, and nothing else -- no
+   exponent, no whitespace.
 
-   fast_float's scanner (ffc.h) was measured against this loop behind the same
-   contract and was slower on prices of ordinary length, which are too short
-   for its eight-digit fast path to engage. */
+   The result is one tagged OCaml int, mantissa * 32 + (-exponent), so the stub
+   is noalloc and needs no out-parameter. Seventeen digits is what makes that
+   fit: the mantissa stays below 10^17 < 2^57, leaving five bits for an
+   exponent of at most seventeen. A value that is not a string, or not such a
+   decimal, returns Max_long, whose low five bits (31) no exponent can have.
+
+   Two alternatives were measured behind the same contract and lost. Writing
+   the exponent into an int ref took 7.8 ns and 10 words a field against 7.2 ns
+   and 8 words for this. Building the (int64 * int) option here in C allocated
+   the same 8 words but took 15.5 ns, the cost of a C call that registers GC
+   roots. fast_float's scanner (ffc.h) was slower than this loop on prices of
+   ordinary length, which are too short for its eight-digit fast path. */
 
 #include <stdint.h>
 #include <stddef.h>
 #include <caml/mlvalues.h>
 #include <yyjson.h>
 
-#define MAX_DIGITS 18
+#define MAX_DIGITS 17
+#define EXPONENT_BITS 5
 
 static intnat decimal(const char *s, size_t n, intnat *exponent) {
   size_t i = 0;
@@ -53,13 +59,13 @@ static intnat decimal(const char *s, size_t n, intnat *exponent) {
   return negative ? -(intnat)mantissa : (intnat)mantissa;
 }
 
-CAMLprim value ml_yyjson_get_decimal(value doc, value v, value exponent) {
+CAMLprim value ml_yyjson_get_decimal(value doc, value v) {
   (void)doc;
   yyjson_val *val = Ptr_val(v);
   const char *s = yyjson_get_str(val);
   if (s == NULL) return Val_long(Max_long);
   intnat e = 0;
   intnat m = decimal(s, yyjson_get_len(val), &e);
-  if (m != Max_long) Field(exponent, 0) = Val_long(e);
-  return Val_long(m);
+  if (m == Max_long) return Val_long(Max_long);
+  return Val_long((intnat)((uintnat)m << EXPONENT_BITS) | -e);
 }

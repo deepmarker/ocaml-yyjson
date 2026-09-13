@@ -143,17 +143,20 @@ let string_value { doc; va } =
   | _ -> None
 ;;
 
-(* The mantissa as a tagged int, or [max_int] when the value is not a string
-   holding a plain decimal; the exponent is written into the ref. See
-   yyjson_decimal.c for why this cannot allocate. *)
-external get_decimal_unsafe : doc -> va -> int ref -> int = "ml_yyjson_get_decimal"
-[@@noalloc]
+(* A plain decimal packed as mantissa * 32 + (-exponent), or [max_int] when
+   the value is not a string holding one. See yyjson_decimal.c for why one
+   immediate, and why seventeen digits. *)
+external get_decimal_unsafe : doc -> va -> int = "ml_yyjson_get_decimal" [@@noalloc]
+
+let exponent_bits = 5
+let exponent_mask = (1 lsl exponent_bits) - 1
 
 let decimal_value { doc; va } =
   check doc;
-  let exponent = ref 0 in
-  let mantissa = get_decimal_unsafe doc va exponent in
-  if mantissa = Int.max_int then None else Some (Int64.of_int mantissa, !exponent)
+  let packed = get_decimal_unsafe doc va in
+  if packed = Int.max_int
+  then None
+  else Some (Int64.of_int (packed asr exponent_bits), -(packed land exponent_mask))
 ;;
 
 let bool_value { doc; va } =
@@ -251,6 +254,48 @@ let arr_fold { doc; va } ~init ~f =
     in
     Some (go init 0 (arr_first_unsafe doc va))
   | _ -> None
+;;
+
+external arr_get_unsafe : doc -> va -> int -> va = "ml_yyjson_arr_get" [@@noalloc]
+
+(* Bounds are checked here, so the stub never returns NULL. *)
+let arr_get { doc; va } i =
+  match get_type doc va with
+  | Arr when i >= 0 && i < arr_size_unsafe doc va ->
+    Some { doc; va = arr_get_unsafe doc va i }
+  | _ -> None
+;;
+
+(* The type is checked once, when the cursor is made; each step after that
+   is a counter test and one pointer step. The pointer past the last element
+   is never computed, which is what the count is for. *)
+type arr_cursor =
+  { arr_doc : doc
+  ; mutable next_va : va
+  ; mutable remaining : int
+  }
+
+let arr_cursor { doc; va } =
+  match get_type doc va with
+  | Arr ->
+    Some
+      { arr_doc = doc
+      ; next_va = arr_first_unsafe doc va
+      ; remaining = arr_size_unsafe doc va
+      }
+  | _ -> None
+;;
+
+let arr_remaining c = c.remaining
+
+let arr_cursor_next c =
+  match c.remaining with
+  | 0 -> None
+  | remaining ->
+    let va = c.next_va in
+    c.remaining <- remaining - 1;
+    if remaining > 1 then c.next_va <- arr_next_unsafe c.arr_doc va;
+    Some { doc = c.arr_doc; va }
 ;;
 
 external obj_size_unsafe : doc -> va -> int = "ml_yyjson_obj_size" [@@noalloc]
