@@ -4,5 +4,5 @@
  (libraries bigstringaf)
  (foreign_stubs
   (language c)
-  (names yyjson_stubs))
+  (names yyjson_stubs yyjson_decimal))
  (c_library_flags :standard -lyyjson))

@@ -66,6 +66,13 @@ val typ : value -> json_typ
 (** [string_value value] copies and returns [value] when it is a JSON string. *)
 val string_value : value -> string option
 
+(** [decimal_value value] reads a JSON string holding a plain decimal — an
+    optional sign, digits with at most one point, one to eighteen digits in
+    all, no exponent — as its (mantissa, exponent), straight off the document
+    without copying the string. [None] if [value] is not a string or not such
+    a decimal. ["62817.99"] is [Some (6281799L, -2)]. *)
+val decimal_value : value -> (int64 * int) option
+
 (** [bool_value value] is the boolean, or [None] if [value] is not one. *)
 val bool_value : value -> bool option
 

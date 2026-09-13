@@ -39,6 +39,13 @@ Yyjson.free_doc doc
 float. `int64_value` returns `None` for an unsigned value above
 `Int64.max_int`; `uint64_value` returns its bit pattern for those.
 
+`decimal_value` reads a JSON *string* holding a plain decimal — the way market
+data sends prices, `"62817.99"` — as an exact `(mantissa, exponent)` pair,
+`(6281799L, -2)`, parsing the bytes where yyjson holds them rather than copying
+the string out first. It accepts an optional sign, digits with at most one
+point and at most 18 digits in all; anything else, including exponent notation,
+is `None`. Nothing goes through a float.
+
 ### Reading many fields, or long arrays
 
 `obj_get` restarts the search for each member, so reading an *n*-field record

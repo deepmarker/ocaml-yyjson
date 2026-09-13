@@ -143,6 +143,19 @@ let string_value { doc; va } =
   | _ -> None
 ;;
 
+(* The mantissa as a tagged int, or [max_int] when the value is not a string
+   holding a plain decimal; the exponent is written into the ref. See
+   yyjson_decimal.c for why this cannot allocate. *)
+external get_decimal_unsafe : doc -> va -> int ref -> int = "ml_yyjson_get_decimal"
+[@@noalloc]
+
+let decimal_value { doc; va } =
+  check doc;
+  let exponent = ref 0 in
+  let mantissa = get_decimal_unsafe doc va exponent in
+  if mantissa = Int.max_int then None else Some (Int64.of_int mantissa, !exponent)
+;;
+
 let bool_value { doc; va } =
   match get_type doc va with
   | Bool -> Some (get_bool doc va)
