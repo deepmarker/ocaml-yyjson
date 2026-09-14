@@ -96,10 +96,29 @@ static intnat packed_decimal(const char *s, size_t n) {
   return (intnat)((uintnat)m << EXPONENT_BITS) | (intnat)(MAX_FRACTION - fraction);
 }
 
+static intnat packed_of_val(yyjson_val *val) {
+  const char *s = yyjson_get_str(val);
+  if (s == NULL) return NOT_PACKED;
+  return packed_decimal(s, yyjson_get_len(val));
+}
+
 CAMLprim value ml_yyjson_get_packed_decimal(value doc, value v) {
   (void)doc;
-  yyjson_val *val = Ptr_val(v);
-  const char *s = yyjson_get_str(val);
-  if (s == NULL) return Val_long(NOT_PACKED);
-  return Val_long(packed_decimal(s, yyjson_get_len(val)));
+  return Val_long(packed_of_val(Ptr_val(v)));
+}
+
+/* Element [i] of an array of exactly [length] elements, read without the
+   OCaml side building a handle for the array or the element: a depth level
+   is two of these, and a book carries dozens of levels per message. Any
+   mismatch -- not an array, another length, an index out of range -- is
+   NOT_PACKED, like a decimal that does not pack, and the caller takes its
+   general path to find out which. */
+CAMLprim value ml_yyjson_get_packed_decimal_at(value doc, value v, value length, value i) {
+  (void)doc;
+  yyjson_val *arr = Ptr_val(v);
+  intnat n = Long_val(length);
+  intnat idx = Long_val(i);
+  if (!yyjson_is_arr(arr) || n < 0 || yyjson_arr_size(arr) != (size_t)n) return Val_long(NOT_PACKED);
+  if (idx < 0 || idx >= n) return Val_long(NOT_PACKED);
+  return Val_long(packed_of_val(yyjson_arr_get(arr, (size_t)idx)));
 }

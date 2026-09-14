@@ -82,6 +82,13 @@ val string_value : value -> string option
     the contract; nothing is allocated. *)
 val packed_decimal : value -> int
 
+(** [packed_decimal_at value ~length i] is {!packed_decimal} of element [i]
+    of [value], an array of exactly [length] elements, read without building
+    a handle for the element. {!not_a_packed_decimal} if [value] is not such
+    an array, [i] is out of range, or the element is not a decimal that
+    packs — a caller that has to tell those apart takes the general path. *)
+val packed_decimal_at : value -> length:int -> int -> int
+
 (** [Int.min_int], which is no packed decimal's value. *)
 val not_a_packed_decimal : int
 

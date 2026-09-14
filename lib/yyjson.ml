@@ -158,6 +158,20 @@ let packed_decimal { doc; va } =
   get_packed_decimal_unsafe doc va
 ;;
 
+external get_packed_decimal_at_unsafe
+  :  doc
+  -> va
+  -> int
+  -> int
+  -> int
+  = "ml_yyjson_get_packed_decimal_at"
+[@@noalloc]
+
+let packed_decimal_at { doc; va } ~length i =
+  check doc;
+  get_packed_decimal_at_unsafe doc va length i
+;;
+
 let bool_value { doc; va } =
   match get_type doc va with
   | Bool -> Some (get_bool doc va)
