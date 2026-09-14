@@ -143,20 +143,19 @@ let string_value { doc; va } =
   | _ -> None
 ;;
 
-(* A plain decimal packed as mantissa * 32 + (-exponent), or [max_int] when
-   the value is not a string holding one. See yyjson_decimal.c for why one
-   immediate, and why seventeen digits. *)
-external get_decimal_unsafe : doc -> va -> int = "ml_yyjson_get_decimal" [@@noalloc]
+(* See yyjson_decimal.c for the layout and the rule for trailing zeros. *)
+external get_packed_decimal_unsafe
+  :  doc
+  -> va
+  -> int
+  = "ml_yyjson_get_packed_decimal"
+[@@noalloc]
 
-let exponent_bits = 5
-let exponent_mask = (1 lsl exponent_bits) - 1
+let not_a_packed_decimal = Int.min_int
 
-let decimal_value { doc; va } =
+let packed_decimal { doc; va } =
   check doc;
-  let packed = get_decimal_unsafe doc va in
-  if packed = Int.max_int
-  then None
-  else Some (Int64.of_int (packed asr exponent_bits), -(packed land exponent_mask))
+  get_packed_decimal_unsafe doc va
 ;;
 
 let bool_value { doc; va } =

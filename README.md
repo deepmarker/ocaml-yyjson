@@ -39,14 +39,14 @@ Yyjson.free_doc doc
 float. `int64_value` returns `None` for an unsigned value above
 `Int64.max_int`; `uint64_value` returns its bit pattern for those.
 
-`decimal_value` reads a JSON *string* holding a plain decimal — the way market
-data sends prices, `"62817.99"` — as an exact `(mantissa, exponent)` pair,
-`(6281799L, -2)`, parsing the bytes where yyjson holds them rather than copying
-the string out first. It accepts an optional sign, digits with at most one
-point and at most 17 digits in all; anything else, including exponent notation,
-is `None`. Nothing goes through a float, and nothing is allocated but the
-result: the stub returns mantissa and exponent packed into one tagged int,
-which is what caps the length at 17 digits.
+`packed_decimal` reads a JSON *string* holding a plain decimal — the way market
+data sends prices, `"62817.99"` — exactly, parsing the bytes where yyjson holds
+them rather than copying the string out first, and packs mantissa and exponent
+into one int: `mantissa lsl 5 lor (exponent + 31)`. It accepts an optional sign
+and digits with at most one point. A mantissa past ±(2^57 − 1), an exponent
+below −31, and anything else, exponent notation included, return
+`not_a_packed_decimal`. Nothing goes through a float and nothing is allocated;
+the layout is `Jsondec.Decimal.t`'s immediate form, which is what it is for.
 
 ### Reading many fields, or long arrays
 

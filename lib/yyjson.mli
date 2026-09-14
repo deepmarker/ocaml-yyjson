@@ -66,16 +66,24 @@ val typ : value -> json_typ
 (** [string_value value] copies and returns [value] when it is a JSON string. *)
 val string_value : value -> string option
 
-(** [decimal_value value] reads a JSON string holding a plain decimal — an
-    optional sign, digits with at most one point, one to seventeen digits in
-    all, no exponent — as its (mantissa, exponent), straight off the document
-    without copying the string. [None] if [value] is not a string or not such
-    a decimal. ["62817.99"] is [Some (6281799L, -2)].
+(** [packed_decimal value] reads a JSON string holding a plain decimal — an
+    optional sign, digits with at most one point, no exponent — straight off
+    the document without copying the string, and returns it packed into one
+    int: [mantissa lsl 5 lor (exponent + 31)]. ["62817.99"] is
+    [6281799 lsl 5 lor 29].
 
-    Seventeen digits, not the eighteen an int64 mantissa could hold, is what
-    lets the result come back without allocating a return channel; a caller
-    that must accept longer decimals parses {!string_value} instead. *)
-val decimal_value : value -> (int64 * int) option
+    Only a mantissa within +/-(2^57 - 1) and an exponent in [-31, 0] pack.
+    Zeros trailing the point are kept if they fit and dropped if dropping
+    them makes the decimal fit. Anything else — not a string, not such a
+    decimal, or too long — is {!not_a_packed_decimal}, and a caller that has
+    to accept it parses {!string_value} instead.
+
+    This is [Jsondec.Decimal.t]'s immediate form, which is why the layout is
+    the contract; nothing is allocated. *)
+val packed_decimal : value -> int
+
+(** [Int.min_int], which is no packed decimal's value. *)
+val not_a_packed_decimal : int
 
 (** [bool_value value] is the boolean, or [None] if [value] is not one. *)
 val bool_value : value -> bool option
