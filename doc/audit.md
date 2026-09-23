@@ -262,6 +262,31 @@ is now a regression test in `test/test.ml` (`read flag mapping`, `raw view`,
 | B | `Store_field` on immediates | Plain `Field` assignment in the three iteration loops. |
 | D | `of_file` GC pressure | `caml_alloc_custom_mem` with the document's read size. |
 
+### Mutable encoder follow-up (2026-09-23)
+
+The schema-generated encoder prompted a second review of every mutable value
+constructor and cleanup path. The scalar constructors (`null`, boolean,
+signed/unsigned integers, float, and copied string) previously returned an
+encoded null pointer if yyjson could not grow its arena. A later object/array
+operation could then dereference that value. Each stub now checks yyjson's
+return before exposing it to OCaml and raises a rooted OCaml exception on
+allocation failure. Because those failure paths may allocate an exception,
+the externals are no longer incorrectly declared `noalloc`.
+
+Mutable signed and unsigned 64-bit constructors were added without passing
+through an OCaml `int`; regression coverage exercises `INT64_MIN`,
+`INT64_MAX`, and `UINT64_MAX`. Explicit document cleanup is tested twice to
+cover the eager-free plus finalizer path. The generated `jsonenc` runtime owns
+the mutable document in `Fun.protect`, so successful serialization and every
+OCaml exception free the arena exactly once.
+
+The mutable `va` handle remains intentionally scoped by convention rather
+than by the OCaml type system: it is an unboxed pointer into its document.
+Mixing handles from different documents or retaining one after freeing its
+owner is outside the public contract. Generated encoders do neither: the
+generated builder returns its root directly to `Jsonenc.to_string`, which
+installs and serializes it before the protected scope frees the document.
+
 Not done, in rough priority order:
 
 - **C** — `view` is inherently the slow path; use the direct accessor API.

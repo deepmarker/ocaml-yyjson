@@ -1,6 +1,10 @@
 open Common
 
-(** Underlying memory. *)
+(** Underlying memory.
+
+    Mutable values are arena-owned pointers. A [va] must only be passed with
+    the [doc] that created it and must not be used after that document is
+    freed. The types do not encode this lifetime relationship. *)
 type doc
 
 (** Iterator on doc. *)
@@ -22,6 +26,10 @@ val doc_set_root : doc -> va -> unit
 val null : doc -> va
 val bool : doc -> bool -> va
 val sint : doc -> int -> va
+val sint64 : doc -> int64 -> va
+
+(** [uint64] interprets its [int64] argument as an unsigned bit pattern. *)
+val uint64 : doc -> int64 -> va
 val float : doc -> float -> va
 val string : doc -> string -> va
 

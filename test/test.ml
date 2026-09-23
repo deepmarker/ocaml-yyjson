@@ -412,8 +412,44 @@ let mutable_doc () =
   let s = Yyjson.Mutable.string d "a\000b" in
   check string "mutable string keeps NUL" "a\000b" (Yyjson.Mutable.get_string d s);
   Yyjson.Mutable.free d;
+  (* Explicit cleanup is idempotent, so a user's eager free and the custom
+     block finalizer cannot double-free the arena. *)
+  Yyjson.Mutable.free d;
   check_raises "use after free" Yyjson.Mutable.Doc_is_null (fun () ->
     ignore (Yyjson.Mutable.get_string d s))
+;;
+
+let mutable_integer_roundtrip () =
+  let d = Yyjson.Mutable.create () in
+  let root = Yyjson.Mutable.create_arr d in
+  let values =
+    [ Yyjson.Mutable.sint64 d Int64.min_value
+    ; Yyjson.Mutable.sint64 d Int64.max_value
+    ; Yyjson.Mutable.uint64 d Int64.minus_one
+    ]
+  in
+  List.iter values ~f:(fun value ->
+    check bool "append" true (Yyjson.Mutable.arr_add d root value));
+  Yyjson.Mutable.doc_set_root d root;
+  check
+    string
+    "exact signed and unsigned values"
+    "[-9223372036854775808,9223372036854775807,18446744073709551615]"
+    (Yyjson.Mutable.to_string d);
+  Yyjson.Mutable.free d
+;;
+
+let mutable_finalizer_stress () =
+  (* Documents deliberately fall out of scope without [free]. The custom
+     block finalizer must reclaim each arena; repeated major collections also
+     exercise coexistence with eagerly freed documents from the other tests. *)
+  for i = 1 to 100_000 do
+    let d = Yyjson.Mutable.create () in
+    let root = Yyjson.Mutable.string d "arena-owned" in
+    Yyjson.Mutable.doc_set_root d root;
+    if i % 1_000 = 0 then Stdlib.Gc.full_major ()
+  done;
+  Stdlib.Gc.full_major ()
 ;;
 
 let scalars () =
@@ -561,6 +597,8 @@ let basic =
   ; test_case "embedded NUL" `Quick embedded_nul
   ; test_case "integer range" `Quick integers
   ; test_case "mutable doc" `Quick mutable_doc
+  ; test_case "mutable 64-bit integers" `Quick mutable_integer_roundtrip
+  ; test_case "mutable finalizer stress" `Slow mutable_finalizer_stress
   ; test_case "scalar accessors" `Quick scalars
   ; test_case "ordered lookup" `Quick ordered_lookup
   ; test_case "array stepping" `Quick array_stepping

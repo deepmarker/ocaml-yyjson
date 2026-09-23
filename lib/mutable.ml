@@ -28,12 +28,14 @@ let[@inline] doc_set_root doc va =
 ;;
 
 (* atom functions functions *)
-external null_unsafe : doc -> va = "ml_yyjson_mut_null" [@@noalloc]
-external bool_unsafe : doc -> bool -> va = "ml_yyjson_mut_bool" [@@noalloc]
-external _uint : doc -> int -> va = "ml_yyjson_mut_uint" [@@noalloc]
-external sint_unsafe : doc -> int -> va = "ml_yyjson_mut_sint" [@@noalloc]
-external float_unsafe : doc -> float -> va = "ml_yyjson_mut_real" [@@noalloc]
-external string_unsafe : doc -> string -> va = "ml_yyjson_mut_strcpy" [@@noalloc]
+external null_unsafe : doc -> va = "ml_yyjson_mut_null"
+external bool_unsafe : doc -> bool -> va = "ml_yyjson_mut_bool"
+external _uint : doc -> int -> va = "ml_yyjson_mut_uint"
+external sint_unsafe : doc -> int -> va = "ml_yyjson_mut_sint"
+external sint64_unsafe : doc -> int64 -> va = "ml_yyjson_mut_sint64"
+external uint64_unsafe : doc -> int64 -> va = "ml_yyjson_mut_uint64"
+external float_unsafe : doc -> float -> va = "ml_yyjson_mut_real"
+external string_unsafe : doc -> string -> va = "ml_yyjson_mut_strcpy"
 
 let[@inline] null doc =
   check doc;
@@ -48,6 +50,16 @@ let[@inline] bool doc b =
 let[@inline] sint doc i =
   check doc;
   sint_unsafe doc i
+;;
+
+let[@inline] sint64 doc i =
+  check doc;
+  sint64_unsafe doc i
+;;
+
+let[@inline] uint64 doc i =
+  check doc;
+  uint64_unsafe doc i
 ;;
 
 let[@inline] float doc f =

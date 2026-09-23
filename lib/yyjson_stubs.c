@@ -268,24 +268,54 @@ CAMLprim value ml_yyjson_mut_obj_add(value doc, value obj, value k, value v) {
 // Mutable value API
 
 CAMLprim value ml_yyjson_mut_null(value doc) {
-    return Val_ptr(yyjson_mut_null(Mutdoc_val(doc)));
+    CAMLparam1(doc);
+    yyjson_mut_val *v = yyjson_mut_null(Mutdoc_val(doc));
+    if (!v) caml_failwith("yyjson_mut_null");
+    CAMLreturn(Val_ptr(v));
 }
 CAMLprim value ml_yyjson_mut_bool(value doc, value b) {
-    return Val_ptr(yyjson_mut_bool(Mutdoc_val(doc), Bool_val(b)));
+    CAMLparam2(doc, b);
+    yyjson_mut_val *v = yyjson_mut_bool(Mutdoc_val(doc), Bool_val(b));
+    if (!v) caml_failwith("yyjson_mut_bool");
+    CAMLreturn(Val_ptr(v));
 }
 CAMLprim value ml_yyjson_mut_uint(value doc, value b) {
-    return Val_ptr(yyjson_mut_uint(Mutdoc_val(doc), Long_val(b)));
+    CAMLparam2(doc, b);
+    yyjson_mut_val *v = yyjson_mut_uint(Mutdoc_val(doc), Long_val(b));
+    if (!v) caml_failwith("yyjson_mut_uint");
+    CAMLreturn(Val_ptr(v));
 }
 CAMLprim value ml_yyjson_mut_sint(value doc, value b) {
-    return Val_ptr(yyjson_mut_sint(Mutdoc_val(doc), Long_val(b)));
+    CAMLparam2(doc, b);
+    yyjson_mut_val *v = yyjson_mut_sint(Mutdoc_val(doc), Long_val(b));
+    if (!v) caml_failwith("yyjson_mut_sint");
+    CAMLreturn(Val_ptr(v));
+}
+CAMLprim value ml_yyjson_mut_sint64(value doc, value b) {
+    CAMLparam2(doc, b);
+    yyjson_mut_val *v = yyjson_mut_sint(Mutdoc_val(doc), Int64_val(b));
+    if (!v) caml_failwith("yyjson_mut_sint64");
+    CAMLreturn(Val_ptr(v));
+}
+CAMLprim value ml_yyjson_mut_uint64(value doc, value b) {
+    CAMLparam2(doc, b);
+    yyjson_mut_val *v = yyjson_mut_uint(Mutdoc_val(doc), (uint64_t) Int64_val(b));
+    if (!v) caml_failwith("yyjson_mut_uint64");
+    CAMLreturn(Val_ptr(v));
 }
 CAMLprim value ml_yyjson_mut_real(value doc, value b) {
-    return Val_ptr(yyjson_mut_real(Mutdoc_val(doc), Double_val(b)));
+    CAMLparam2(doc, b);
+    yyjson_mut_val *v = yyjson_mut_real(Mutdoc_val(doc), Double_val(b));
+    if (!v) caml_failwith("yyjson_mut_real");
+    CAMLreturn(Val_ptr(v));
 }
 CAMLprim value ml_yyjson_mut_strcpy(value doc, value b) {
-    return Val_ptr(yyjson_mut_strncpy(Mutdoc_val(doc),
-                                      String_val(b),
-                                      caml_string_length(b)));
+    CAMLparam2(doc, b);
+    yyjson_mut_val *v = yyjson_mut_strncpy(Mutdoc_val(doc),
+                                           String_val(b),
+                                           caml_string_length(b));
+    if (!v) caml_failwith("yyjson_mut_strncpy");
+    CAMLreturn(Val_ptr(v));
 }
 
 /* [va] is an immediate (Val_ptr p = p + 1), so the fields holding one need
